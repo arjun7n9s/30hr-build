@@ -1,8 +1,8 @@
-# Journeyman architecture (locked v1)
+# Journeyman architecture (locked)
 
 Canonical copy: [../architecture.md](../architecture.md)
 
-This is the **locked** baseline. Add branches and integrations only as explicit follow-ups. Do not resurrect cut boxes (cost router, Context Gates, patch synthesizer, script library, red-team) unless a later note says so.
+This is the **finalized** graph. Grafts are in. Implement in the build order below — do not skip ahead to polish boxes.
 
 - **Track:** Automated Agent Engineering
 - **Third-party (pinned):** GitHub official MCP, readonly for eval (`https://api.githubcopilot.com/mcp/readonly`)
@@ -19,19 +19,27 @@ flowchart TB
     Runs[Runs timeline]
     Trace[Trace cockpit]
     PlaybookUI[Playbook viewer]
-    PromoteUI[Promote]
+    JournalUI[Journal tab]
+    PromoteUI[Promote / Rollback]
   end
 
   subgraph brain [Journeyman loop]
+    Router[Cost router]
     Actor[Journeyman Actor]
+    Gates[Context Gates]
     Policy[Policy YAML]
     Reflect[Self-reflection]
+    Patch[Patch synthesizer]
+    Budget[Patch Budget]
     EvalDev[Eval DEV]
     EvalHold[Eval HELD-OUT]
+    RedTeam[RedTeam on LIVE]
   end
 
   subgraph memory [Memory]
     Playbook[(Playbook versions)]
+    Scripts[(Scripts)]
+    Journal[(Playbook Journal md)]
     Traces[(Run traces)]
     Versions[(Active version pointer)]
   end
@@ -44,49 +52,61 @@ flowchart TB
   Judge --> PromoteUI
 
   Playbook -->|retrieved every run| Actor
+  Scripts -->|retrieved every run| Actor
   Versions -->|active playbook| Actor
+  Playbook -->|seen pattern to cheap path| Router
 
-  Challenge --> Actor
-  Actor --> Policy --> MCP --> Actor
+  Challenge --> Router --> Actor
+  Actor --> Gates --> Policy --> MCP --> Actor
   Actor --> Traces
   Traces --> Trace
   Traces --> Runs
 
   Traces --> Reflect
+  Playbook -->|merge / supersede| Reflect
+  EvalDev -->|fail patterns| Reflect
   Reflect -->|diffable merge| Playbook
+  Reflect --> Scripts
+  Reflect -->|append lesson| Journal
+  Journal --> JournalUI
   Playbook --> PlaybookUI
   Versions --> PlaybookUI
 
-  Playbook --> EvalDev
+  Traces --> Patch
+  Playbook --> Patch
+  Scripts --> Patch
+  Versions -->|prior verdicts| Patch
+  Patch --> Budget
+  Budget -->|candidate| EvalDev
+  Budget -->|stop no-improve| PromoteUI
+
   EvalDev --> Runs
   EvalDev -->|helps| PromoteUI
   PromoteUI -->|candidate only| EvalHold
   EvalHold -->|headline| PromoteUI
   EvalHold --> Runs
   PromoteUI -->|approved| Versions
+  PromoteUI -->|rollback| Versions
   PromoteUI -->|rejected| Actor
+
+  Versions -->|LIVE| RedTeam
+  RedTeam -->|fail| Patch
+  RedTeam --> Runs
 
   Challenge -.->|never writes| EvalHold
 ```
 
-## Loop in words
+## Grafts (locked in)
 
-1. Challenge hits the actor. The actor reads the **active playbook**, then Policy YAML, then GitHub MCP, then writes a **trace**.
-2. After DEV work, reflection writes a **diffable playbook version**. The next run must retrieve it.
-3. Frozen **Eval DEV** scores accuracy / cost / speed. If it helps, Promote may run **sealed hold-out**.
-4. Approve activates the version pointer. Reject leaves the actor on the previous version.
-5. Runs shows **v0 (empty playbook)** vs later versions. Hold-out never trains the playbook. Challenge never appends hold-out tasks.
+Router, Gates, Patch + Budget, RedTeam, Scripts, Journal, Rollback on Promote.
 
-## Intentionally not in v1
+## Build order
 
-Cost router, Context Gates as a subsystem, patch synthesizer / patch budget product, script library, red-team cadence, rollback chrome beyond “activate this version.”
+1. Actor ↔ MCP ↔ Traces
+2. Reflect → Playbook / Journal
+3. Eval DEV
+4. Patch + Budget
+5. Promote / held-out
+6. Router / Gates / RedTeam polish
 
-## Locked interfaces
-
-| Surface | Shows |
-|---|---|
-| Challenge | Judge task in; classify/answer via MCP + playbook |
-| Runs | DEV vs hold-out, v0 vs vN, three metrics |
-| Trace | Step-through tool spans, args, result, cost, latency |
-| Playbook | Active version + facts learned from the fixture repo |
-| Promote | DEV score + hold-out headline; approve / reject |
+Invariant: Challenge never writes hold-out. Hold-out never trains playbook or journal.
