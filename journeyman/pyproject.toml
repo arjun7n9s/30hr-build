@@ -26,3 +26,6 @@ journeyman = ["py.typed", "policy/*.yaml", "partners/*.md"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+markers = [
+    "live: hits partner HTTP; skipped unless required keys are in the environment",
+]

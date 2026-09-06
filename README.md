@@ -28,6 +28,23 @@ python -m journeyman.demo.run --rollback --work-root .
 
 `--mode live` needs `TMX_API_KEY`, `GITHUB_TOKEN`, and (for traces) `NEATLOGS_API_KEY` in local `.env`. Never paste keys into chat. Offline uses MCP/chat doubles on the **same** pipeline. `--rollback` restores the prior version pointer after a promote.
 
+### Live smoke
+
+```bash
+python -m journeyman.demo.run --challenge frozen --mode live --work-root /tmp/jm-live
+```
+
+Required env in local `.env` (never paste in chat):
+
+- `TMX_API_KEY` — cheap chat (TensorMux)
+- `OPENAI_API_KEY` — escalate + embeddings
+- `GITHUB_TOKEN` — official GitHub MCP readonly
+- `NEATLOGS_API_KEY` — trace ingest bearer
+- `NEATLOGS_PROJECT_ID` — trace project id
+- `NEATLOGS_BASE_URL=https://ingest.neatlogs.com`
+
+Same pipeline as `--mode offline`; live only swaps the Chat/MCP/Neatlogs IO. `render()` prints the Neatlogs trace URL when the sink flushed.
+
 After a run, open `ui/index.html` or the Vite shell (`web/`), which reads `last-report.json`. The UI does not reimplement the loop.
 
 Mechanisms import shapes from `journeyman.contracts` only. Keys stay in local `.env`.

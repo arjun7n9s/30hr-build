@@ -41,10 +41,11 @@ class GithubMcp:
             return self.fixture.call(name, args)
         if os.environ.get(REST_FLAG) == "1":
             return GitHubClient(self.snapshot, offline=False).call(_rest_alias(name), args)
-        key = (name, json.dumps(args, sort_keys=True, default=str))
+        mapped = _live_args(name, args)
+        key = (name, json.dumps(mapped, sort_keys=True, default=str))
         if key in self._cache:
             return self._cache[key]
-        result = self._rpc(name, args)
+        result = self._rpc(name, mapped)
         self._cache[key] = result
         return result
 
@@ -68,13 +69,13 @@ class GithubMcp:
             self._headers(),
             timeout=40.0,
         )
+        if body.get("error"):
+            raise RuntimeError(str(body["error"])[:300])
         self._session_id = (
             headers.get("Mcp-Session-Id")
             or headers.get("mcp-session-id")
             or _header_ci(headers, "mcp-session-id")
         )
-        if body.get("error"):
-            raise RuntimeError(str(body["error"])[:300])
         try:
             request_json(
                 "POST",
@@ -111,6 +112,9 @@ class GithubMcp:
         headers = {
             "Authorization": f"Bearer {self.token}",
             "Accept": "application/json, text/event-stream",
+            "X-MCP-Toolsets": os.environ.get(
+                "GITHUB_MCP_TOOLSETS", "repos,issues,pull_requests,labels"
+            ),
         }
         if self._session_id:
             headers["Mcp-Session-Id"] = self._session_id
@@ -146,12 +150,35 @@ class FixtureMcp:
         return self.inner.call(name if name != "issue_read" else "get_issue", mapped)
 
 
+def _live_args(name: str, args: dict[str, Any]) -> dict[str, Any]:
+    """Official readonly MCP names/params. Live only — fixture path stays as-is."""
+    mapped = dict(args)
+    if name == "issue_read":
+        mapped.setdefault("method", "get")
+        number = mapped.get("issue_number") or mapped.get("number")
+        if number is not None:
+            mapped["issue_number"] = int(number)
+    if name == "pull_request_read":
+        mapped.setdefault("method", "get")
+        number = mapped.get("pullNumber") or mapped.get("pull_number") or mapped.get("number")
+        if number is not None:
+            mapped["pullNumber"] = int(number)
+        mapped.pop("pull_number", None)
+    return mapped
+
+
 def _unwrap_mcp(raw: dict[str, Any]) -> dict[str, Any]:
     if raw.get("error"):
         return {**EMPTY, "error": str(raw["error"])[:300]}
     result = raw.get("result", raw)
     if not isinstance(result, dict):
         return {"found": True, "data": result}
+    if result.get("isError") is True:
+        text = ""
+        content = result.get("content")
+        if isinstance(content, list) and content and isinstance(content[0], dict):
+            text = str(content[0].get("text") or "")
+        return {**EMPTY, "error": (text or "mcp tool error")[:300]}
     content = result.get("content")
     if isinstance(content, list) and content:
         texts: list[str] = []

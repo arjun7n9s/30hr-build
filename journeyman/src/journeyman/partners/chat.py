@@ -18,6 +18,10 @@ from journeyman.contracts import (
 from journeyman.partners.http import post_json
 from journeyman.spend import load_local_env
 
+# Hard cap per hop so a stalled TensorMux/OpenAI stream cannot freeze the CLI.
+CHAT_TIMEOUT_S = 25.0
+CHAT_ATTEMPTS = 3
+
 HALLUCINATED = (
     "This repository always has a guaranteed 90-day refund policy "
     "and issue 12 is already shipped."
@@ -78,7 +82,7 @@ class ChatClient:
                 cost=0.0,
                 raw={"offline": True, "dim": 8, "keyword_fallback": not bool(key)},
             )
-        payload = post_json(
+        payload = _post_with_retry(
             self.escalate_base.rstrip("/") + "/embeddings",
             {"model": self.embed_model, "input": text},
             {"Authorization": f"Bearer {key}"},
@@ -101,9 +105,9 @@ class ChatClient:
             base, key, provider = self.cheap_base, _cheap_key(), "cheap"
         if not key:
             raise RuntimeError("chat key missing from local .env")
-        payload = post_json(
+        payload = _post_with_retry(
             base.rstrip("/") + "/chat/completions",
-            {"model": decision.model, "messages": messages},
+            {"model": decision.model, "messages": messages, "stream": False},
             {"Authorization": f"Bearer {key}"},
         )
         text = _choice_text(payload)
@@ -143,6 +147,16 @@ class ChatClient:
             cost=cost,
             raw={"offline": True},
         )
+
+
+def _post_with_retry(url: str, payload: dict[str, Any], headers: dict[str, str]) -> dict[str, Any]:
+    last: Exception | None = None
+    for _ in range(CHAT_ATTEMPTS):
+        try:
+            return post_json(url, payload, headers, timeout=CHAT_TIMEOUT_S, attempts=1)
+        except RuntimeError as exc:
+            last = exc
+    raise RuntimeError(f"chat timeout after {CHAT_ATTEMPTS} attempts: {last}") from last
 
 
 def _asks_grounding(messages: list[dict[str, str]]) -> bool:

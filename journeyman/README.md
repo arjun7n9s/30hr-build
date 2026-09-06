@@ -31,6 +31,18 @@ python -m journeyman.demo.run --rollback --work-root .
 
 `--mode live` uses TensorMux/OpenAI HTTP, GitHub MCP readonly against `arjun7n9s/journeyman-fixture`, and Neatlogs ingest when those keys are in local `.env`. Offline shares the same pipeline and branches only at Chat / MCP / Neatlogs IO.
 
+## Live smoke
+
+Same CLI. IO only branches at Chat / GitHub MCP / Neatlogs. Keys stay in local `.env`.
+
+```bash
+python -m journeyman.demo.run --challenge frozen --mode live --work-root /tmp/jm-live
+```
+
+Required env: `TMX_API_KEY`, `OPENAI_API_KEY`, `GITHUB_TOKEN`, `NEATLOGS_API_KEY`, `NEATLOGS_PROJECT_ID`, `NEATLOGS_BASE_URL=https://ingest.neatlogs.com`.
+
+Live pytest: `pytest -m live` (skipped by default when keys are absent). A redacted transcript lives in `docs/LIVE_SMOKE.md`.
+
 Open `ui/index.html` after a run (or the Vite shell, which reads `web/public/last-report.json`). The UI does not re-run the loop.
 
 ## Derive vs mine vs promote
