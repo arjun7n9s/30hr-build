@@ -73,6 +73,7 @@ _HTML = """<!doctype html>
     const telemetry = /^(?:[-*]\\s*)?(?:Run\\d+\\s+DEV\\b|Reflect merged\\b|promoted\\s|Derived\\s|Mined\\s|candidate held\\b|postmortem\\s)/i;
     const failureDump = /When asked .+ do not invent\\.\\s*Failed with/i;
     const weakAdvice = /be helpful and confident|guess if you are unsure/i;
+    const toolDump = /\\{['"]found['"]|get_file_contents:|pull_request_read:|issue_read:|list_issues:|From repo evidence/i;
     const humanize = (text) => text
       .replace(/^WHEN\\s+/i, "If ")
       .replace(/\\s+THEN\\s+/i, ", ")
@@ -84,7 +85,7 @@ _HTML = """<!doctype html>
       .trim();
     const isHuman = (line) => {
       const t = (line || "").trim();
-      return t.length >= 12 && t.length <= 280 && !telemetry.test(t) && !failureDump.test(t) && !weakAdvice.test(t);
+      return t.length >= 12 && t.length <= 280 && !telemetry.test(t) && !failureDump.test(t) && !weakAdvice.test(t) && !toolDump.test(t);
     };
     const lessons = (() => {
       const out = [];
