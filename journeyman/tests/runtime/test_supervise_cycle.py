@@ -70,11 +70,11 @@ def test_supervise_cycle_run_once(tmp_path: Path) -> None:
     assert item is not None
     assert item.verdict is not None
     assert item.verdict.is_failure
-    assert item.stage is Stage.RED_TEAMED
+    assert item.stage is Stage.REPLAYED
     assert item.candidate_prompt_version
     assert item.candidate_prompt_version.startswith("cand-")
     assert item.replay is not None
-    assert item.redteam is not None
+    assert item.redteam is None
     assert item.eval_result is not None
     assert item.eval_result.wilson_low is not None
     assert (tmp_path / "sessions" / f"{item.work_item_id}.md").exists()

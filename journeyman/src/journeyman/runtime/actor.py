@@ -21,6 +21,7 @@ from journeyman.ingest import NullTraceSink, TraceSink
 from journeyman.partners.chat import ChatClient, ChatTurn
 from journeyman.partners.github import GitHubClient
 from journeyman.partners.mcp import GithubMcp
+from journeyman.partners.sink import emit_node
 from journeyman.policy import ToolGateway
 from journeyman.runtime import ContextGate
 from journeyman.runtime.triage import answer_task
@@ -82,6 +83,18 @@ class Actor:
         task: dict[str, Any] | None = None,
     ) -> ActorTurn:
         trace_id = uuid.uuid4().hex[:16]
+        embed_decision = self.router.embed_route()
+        emit_node(
+            self.sink,
+            "Router",
+            title="embed",
+            detail=embed_decision.model,
+            payload={"choice": embed_decision.choice.value, "path": "embed"},
+        )
+        try:
+            self.chat.embed(prompt)
+        except Exception:
+            pass
         hits = _playbook_hits(playbook, prompt)
         skill_hits = self.skills.find(SkillQuery(text=prompt))
         hits.extend(f"skill:{hit.skill.name}" for hit in skill_hits)
@@ -109,6 +122,13 @@ class Actor:
                 if not denied and _has_payload(result):
                     evidence.append(_evidence_text(name, result))
         first = self.router.decide(prompt)
+        emit_node(
+            self.sink,
+            "Router",
+            title=first.choice.value,
+            detail=first.model,
+            payload={"gate_miss": first.gate_miss, "node": "Actor"},
+        )
         turn = self.chat.complete(
             _messages(system, prompt, evidence),
             first,
@@ -130,6 +150,14 @@ class Actor:
         cost += turn.cost
         score = _grounding_score(turn.text, evidence)
         second = self.router.decide(prompt, cheap_output=turn.text, score=score)
+        if second.gate_miss:
+            emit_node(
+                self.sink,
+                "Router",
+                title="escalate",
+                detail=second.model,
+                payload={"gate_miss": True, "reason": str(second.escalate_reason)},
+            )
         escalated = second.choice is not first.choice or second.gate_miss
         final = turn
         if escalated:

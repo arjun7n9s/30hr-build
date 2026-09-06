@@ -16,6 +16,7 @@ from journeyman.contracts import (
     SkillEntry,
     SpanKind,
     Split,
+    Stage,
     VersionPointer,
     VersionStatus,
 )
@@ -27,11 +28,13 @@ from journeyman.evolve import BudgetedEvolver
 from journeyman.ingest import TraceIngest
 from journeyman.journal import JournalStore
 from journeyman.partners.chat import ChatClient
-from journeyman.partners.sink import NeatlogsTraceSink
+from journeyman.partners.sink import NeatlogsTraceSink, emit_node
+from journeyman.reflect import Reflect
 from journeyman.runtime import SuperviseCycle
 from journeyman.runtime.actor import Actor, ActorTurn
 from journeyman.skills import SkillLibrary
 from journeyman.stats.ab import fill_eval_result
+from journeyman.verify import AdversarialProbe
 
 # Test hook: every score_split call records (session_id, split).
 SCORE_LOG: list[tuple[str, str]] = []
@@ -85,6 +88,8 @@ def score_split(
     split: Split = Split.DEV,
 ) -> SplitScore:
     SCORE_LOG.append((session_id, split.value))
+    node = "Eval Hold" if split is Split.HOLDOUT else "Eval DEV"
+    emit_node(actor.sink, node, title=session_id, payload={"n": len(cases), "split": split.value})
     turns: list[ActorTurn] = []
     passed: list[bool] = []
     cost = 0.0
@@ -227,7 +232,21 @@ def run_demo(
     hold_candidate: SplitScore | None = None
     if candidate_prompt and candidate_version:
         pointer = VersionPointer(active=pointer.active, candidate=candidate_version)
-        candidate_book = playbook_from_candidate(candidate_prompt, candidate_version)
+        incoming = [
+            PlaybookEntry(
+                id="candidate-rule",
+                text=candidate_prompt,
+                tags=["candidate", "evidence"],
+                version=candidate_version,
+            ),
+            PlaybookEntry(
+                id="taxonomy",
+                text="Infer area:/type:/priority: from retrieved issue titles. Cite tools. If missing, say so.",
+                tags=["taxonomy"],
+                version=candidate_version,
+            ),
+        ]
+        candidate_book = Reflect().merge(playbook, incoming, sink=sink, version=candidate_version)
         cand_dev = score_split(actor, challenge.dev, candidate_book, "demo-cand-dev", split=Split.DEV)
         improved = cand_dev.pass_rate > run1.pass_rate
         if improved:
@@ -244,6 +263,16 @@ def run_demo(
                 playbook = candidate_book
                 promoted = True
                 run_n = cand_dev
+                if item is not None:
+                    AdversarialProbe().attack(item)
+                    emit_node(
+                        sink,
+                        "RedTeam",
+                        title="live",
+                        stage=Stage.RED_TEAMED,
+                        work_item_id=item.work_item_id,
+                        payload={"version": candidate_version},
+                    )
                 journal.persist_lesson(
                     JournalEntry(
                         id="lesson-promote",

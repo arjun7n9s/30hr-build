@@ -8,12 +8,15 @@ from journeyman.contracts import (
     EMBED_MODEL,
     EscalateReason,
     PatchBudgetCounters,
+    Playbook,
+    PlaybookEntry,
     RouteChoice,
     SkillEntry,
     SkillQuery,
 )
 from journeyman.evolve import BudgetedEvolver
 from journeyman.policy import PolicyStream, ToolGateway
+from journeyman.reflect import Reflect
 from journeyman.runtime import ContextGate
 from journeyman.skills import SkillLibrary
 from journeyman.spend import CostRouter
@@ -120,3 +123,21 @@ def test_context_gate_enter_exit() -> None:
     assert hook.divergence is False
     decision = gate.check("quality", 0.9)
     assert decision.passed is True
+
+
+def test_reflect_merge_supersedes_by_id() -> None:
+    current = Playbook(
+        version="0",
+        empty=False,
+        entries=[PlaybookEntry(id="a", text="old", version="0")],
+    )
+    incoming = [
+        PlaybookEntry(id="a", text="new", version="1"),
+        PlaybookEntry(id="b", text="extra", version="1"),
+    ]
+    merged = Reflect().merge(current, incoming, version="1")
+    texts = {entry.id: entry.text for entry in merged.entries}
+    assert texts["a"] == "new"
+    assert texts["b"] == "extra"
+    assert merged.empty is False
+    assert merged.version == "1"

@@ -17,6 +17,7 @@ from journeyman.evalset import ProbeFactory
 from journeyman.ingest import TraceIngest
 from journeyman.journal import JournalStore
 from journeyman.patch import PromptSurgeon
+from journeyman.partners.sink import emit_node
 from journeyman.verify import AdversarialProbe, ExactReplay
 
 
@@ -62,7 +63,7 @@ class ContextGate:
 
 
 class SuperviseCycle:
-    """TraceIngest.poll → FailureJudge.diagnose → skip if not failure → CausalAnalyst.analyze → ProbeFactory.synthesize → resolve baseline → LiveScorer.run_baseline → PromptSurgeon.propose (candidate only) → LiveScorer.run_candidate → ExactReplay.replay → AdversarialProbe.attack → persist postmortem stub"""
+    """TraceIngest.poll → FailureJudge.diagnose → skip if not failure → CausalAnalyst.analyze → ProbeFactory.synthesize → resolve baseline → LiveScorer.run_baseline → PromptSurgeon.propose (candidate only) → LiveScorer.run_candidate → ExactReplay.replay → persist postmortem. RedTeam runs after promote on LIVE only."""
 
     def __init__(
         self,
@@ -96,17 +97,24 @@ class SuperviseCycle:
         return None
 
     def run(self, item: WorkItem) -> WorkItem:
+        sink = self.ingest.sink
         self.judge.diagnose(item)
+        emit_node(sink, "Patch", title="diagnosed", stage=item.stage, work_item_id=item.work_item_id)
         if item.verdict is None or not item.verdict.is_failure:
             return item
         self.analyst.analyze(item)
+        emit_node(sink, "Patch", title="root_caused", stage=item.stage, work_item_id=item.work_item_id)
         self.probes.synthesize(item)
+        emit_node(sink, "Eval DEV", title="synthesized", stage=item.stage, work_item_id=item.work_item_id)
         item.baseline_prompt = _resolve_baseline(item)
         self.scorer.run_baseline(item)
+        emit_node(sink, "Eval DEV", title="baseline", stage=item.stage, work_item_id=item.work_item_id)
         self.surgeon.propose(item)
+        emit_node(sink, "Patch", title="candidate", stage=item.stage, work_item_id=item.work_item_id)
         self.scorer.run_candidate(item)
+        emit_node(sink, "Eval DEV", title="candidate", stage=item.stage, work_item_id=item.work_item_id)
         self.replay.replay(item)
-        self.redteam.attack(item)
+        emit_node(sink, "Patch", title="replayed", stage=item.stage, work_item_id=item.work_item_id)
         self.journal.persist_postmortem(item)
         return item
 

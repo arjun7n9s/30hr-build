@@ -88,3 +88,6 @@ def test_trace_sink_falls_back_without_keys(tmp_path: Path, monkeypatch) -> None
     assert isinstance(sink, NullTraceSink)
     constructed = NeatlogsTraceSink(api_key="", project_id="")
     assert constructed.enabled is False
+    remapped = NeatlogsTraceSink(api_key="k", project_id="p", base_url="https://app.neatlogs.com")
+    assert remapped.enabled is True
+    assert remapped.base_url == "https://ingest.neatlogs.com"
