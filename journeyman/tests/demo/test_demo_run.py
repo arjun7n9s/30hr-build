@@ -1,11 +1,13 @@
-"""Offline demo runner: sealed hold-out and Run1 DEV → RunN."""
+"""Offline demo runner: sealed hold-out, smoke, and frozen eval."""
 
 from datetime import datetime, timezone
 from pathlib import Path
 
 from journeyman.contracts import SpanKind, Split, TraceSpan
 from journeyman.demo.run import run_demo
+from journeyman.evalset.frozen import load_frozen_eval
 from journeyman.ingest import TraceIngest
+from journeyman.partners.mcp import REST_FLAG, GithubMcp
 
 
 def test_demo_runner_offline_improves(tmp_path: Path) -> None:
@@ -56,3 +58,31 @@ def test_holdout_not_scored_before_candidate(tmp_path: Path) -> None:
     )
     assert ingest.poll() == []
     assert "hold-span" in ingest.seen
+
+
+def test_frozen_eval_counts() -> None:
+    challenge = load_frozen_eval()
+    assert challenge.repo == "arjun7n9s/journeyman-fixture"
+    assert len(challenge.dev) == 10
+    assert len(challenge.held_out) == 6
+    assert {case.task_type for case in challenge.dev} >= {"label", "duplicate", "owner", "summarize", "fix_pr"}
+
+
+def test_frozen_demo_offline_improves(tmp_path: Path) -> None:
+    report = run_demo("frozen", work_root=tmp_path, offline=True)
+    assert report.challenge_id == "frozen"
+    assert report.run1.n == 10
+    assert report.run1.pass_rate < report.run_n.pass_rate
+    assert report.promoted is True
+    assert report.hold_prior is not None
+    assert report.hold_candidate is not None
+    assert report.hold_candidate.n == 6
+    assert all(split == "dev" for _, split in report.score_log if split != "holdout")
+
+
+def test_mcp_rest_flag_off_by_default(monkeypatch) -> None:
+    monkeypatch.delenv(REST_FLAG, raising=False)
+    client = GithubMcp({"issues": [{"number": 1, "title": "x", "body": "y"}]}, offline=True)
+    hit = client.call("issue_read", {"issue_number": 1})
+    assert hit.get("found") is True
+    assert hit.get("title") == "x"

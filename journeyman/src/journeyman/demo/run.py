@@ -20,11 +20,13 @@ from journeyman.contracts import (
     VersionStatus,
 )
 from journeyman.demo.challenge import ChallengeCase, challenges_dir, load_challenge
+from journeyman.evalset.frozen import load_frozen_eval
+from journeyman.partners.mcp import GithubMcp
+from journeyman.runtime.triage import score_frozen
 from journeyman.evolve import BudgetedEvolver
 from journeyman.ingest import TraceIngest
 from journeyman.journal import JournalStore
 from journeyman.partners.chat import ChatClient
-from journeyman.partners.github import GitHubClient
 from journeyman.partners.sink import NeatlogsTraceSink
 from journeyman.runtime import SuperviseCycle
 from journeyman.runtime.actor import Actor, ActorTurn
@@ -94,9 +96,10 @@ def score_split(
             session_id=session_id,
             prompt_variant="baseline",
             split=split,
+            task=_task_payload(case),
         )
         turns.append(turn)
-        passed.append(case_passes(case.expected, turn.text))
+        passed.append(_case_passed(case, turn))
         cost += turn.cost
         tokens += turn.tokens
     n = len(cases)
@@ -111,6 +114,18 @@ def score_split(
         passed=passed,
         split=split,
     )
+
+
+def _task_payload(case: ChallengeCase) -> dict | None:
+    if not case.task_type:
+        return None
+    return {"type": case.task_type, "github": case.github, "id": case.id}
+
+
+def _case_passed(case: ChallengeCase, turn: ActorTurn) -> bool:
+    if case.expected_obj:
+        return score_frozen(case.expected_obj, turn.text, turn.answer)
+    return case_passes(case.expected, turn.text)
 
 
 def playbook_from_candidate(item_prompt: str, version: str) -> Playbook:
@@ -151,7 +166,10 @@ def run_demo(
     offline: bool = True,
 ) -> DemoReport:
     SCORE_LOG.clear()
-    challenge = load_challenge(challenge_id, challenges_path)
+    if challenge_id in {"frozen", "github_triage_frozen", ""}:
+        challenge = load_frozen_eval()
+    else:
+        challenge = load_challenge(challenge_id, challenges_path)
     work_root.mkdir(parents=True, exist_ok=True)
     journal = JournalStore(work_root / "journal")
     skills = SkillLibrary(work_root / "skills" / "library.json")
@@ -165,7 +183,7 @@ def run_demo(
         )
     )
     sink = NeatlogsTraceSink.from_env()
-    github = GitHubClient(challenge.github, offline=offline)
+    github = GithubMcp(challenge.github, offline=offline)
     chat = ChatClient(offline=offline)
     actor = Actor(
         chat=chat,
@@ -311,7 +329,7 @@ def render(report: DemoReport) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Journeyman readonly GitHub demo loop")
-    parser.add_argument("--challenge", default="github_triage_v1")
+    parser.add_argument("--challenge", default="frozen")
     parser.add_argument("--work-root", default=".")
     parser.add_argument("--challenges", default="", help="override fixtures/challenges directory")
     args = parser.parse_args(argv)

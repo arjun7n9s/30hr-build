@@ -2,6 +2,7 @@
 
 from journeyman.partners.chat import ChatClient, ChatTurn
 from journeyman.partners.github import FixtureGitHub, GitHubClient
+from journeyman.partners.mcp import GithubMcp
 from journeyman.partners.sink import NeatlogsTraceSink
 
 __all__ = [
@@ -9,5 +10,6 @@ __all__ = [
     "ChatTurn",
     "FixtureGitHub",
     "GitHubClient",
+    "GithubMcp",
     "NeatlogsTraceSink",
 ]

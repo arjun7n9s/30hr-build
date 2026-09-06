@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +16,9 @@ class ChallengeCase:
     question: str
     expected: str
     split: Split
+    task_type: str = ""
+    github: dict[str, Any] = field(default_factory=dict)
+    expected_obj: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

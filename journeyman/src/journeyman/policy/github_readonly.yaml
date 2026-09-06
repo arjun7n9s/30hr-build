@@ -1,20 +1,29 @@
 version: "1"
 allow:
+  - get_me
+  - search_repositories
+  - list_label
+  - get_label
   - get_file_contents
-  - get_repository
+  - get_repository_tree
+  - issue_read
   - list_issues
-  - get_issue
   - search_issues
   - list_pull_requests
-  - get_pull_request
+  - pull_request_read
   - search_pull_requests
   - search_code
+  - get_issue
+  - get_pull_request
   - list_labels
-  - get_label
+  - get_repository
   - list_commits
   - get_commit
   - list_branches
 deny:
+  - issue_write
+  - sub_issue_write
+  - label_write
   - create_issue
   - create_pull_request
   - push_files
@@ -29,6 +38,7 @@ deny:
   - get_secret
   - list_secrets
   - create_or_update_secret
+  - actions_run_trigger
 shadow:
   name: shadow
   policy_version: "1-shadow"

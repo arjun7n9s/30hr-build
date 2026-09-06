@@ -20,8 +20,10 @@ from journeyman.contracts import (
 from journeyman.ingest import NullTraceSink, TraceSink
 from journeyman.partners.chat import ChatClient, ChatTurn
 from journeyman.partners.github import GitHubClient
+from journeyman.partners.mcp import GithubMcp
 from journeyman.policy import ToolGateway
 from journeyman.runtime import ContextGate
+from journeyman.runtime.triage import answer_task
 from journeyman.skills import SkillLibrary as SkillStore
 from journeyman.spend import CostRouter
 
@@ -39,6 +41,7 @@ class ActorTurn:
     model: str
     escalated: bool
     events: list[TraceEventRow] = field(default_factory=list)
+    answer: dict[str, Any] = field(default_factory=dict)
 
 
 class Actor:
@@ -49,17 +52,17 @@ class Actor:
         gateway: ToolGateway | None = None,
         gate: ContextGate | None = None,
         chat: ChatClient | None = None,
-        github: GitHubClient | None = None,
+        github: GitHubClient | GithubMcp | None = None,
         skills: SkillStore | None = None,
         sink: TraceSink | None = None,
-        repo: str = "demo/widget",
+        repo: str = "arjun7n9s/journeyman-fixture",
         project: str = "demo",
     ) -> None:
         self.router = router or CostRouter()
         self.gateway = gateway or ToolGateway()
         self.gate = gate or ContextGate()
         self.chat = chat or ChatClient(offline=True)
-        self.github = github or GitHubClient(offline=True)
+        self.github = github or GithubMcp(offline=True)
         self.skills = skills or SkillStore()
         self.sink = sink or NullTraceSink()
         self.repo = repo
@@ -76,6 +79,7 @@ class Actor:
         session_id: str = "demo",
         prompt_variant: str = "baseline",
         split: Split = Split.DEV,
+        task: dict[str, Any] | None = None,
     ) -> ActorTurn:
         trace_id = uuid.uuid4().hex[:16]
         hits = _playbook_hits(playbook, prompt)
@@ -89,7 +93,7 @@ class Actor:
         tokens = 0
         cost = 0.0
         if _should_use_tools(playbook):
-            for name, args in _plan_tools(prompt, self.owner, self.repo_name):
+            for name, args in _plan_tools(prompt, self.owner, self.repo_name, task):
                 result, tool_span, event = self._tool_hop(
                     name,
                     args,
@@ -148,8 +152,17 @@ class Actor:
             events.append(event)
             tokens += final.tokens
             cost += final.cost
+        structured: dict[str, Any] = {}
+        if task and not playbook.empty:
+            structured = answer_task(
+                str(task.get("type") or ""),
+                prompt,
+                dict(task.get("github") or {}),
+                evidence,
+                grounded=True,
+            )
         return ActorTurn(
-            text=final.text,
+            text=_with_answer(final.text, structured),
             spans=spans,
             tool_calls=tool_calls,
             tokens=tokens,
@@ -158,6 +171,7 @@ class Actor:
             model=final.model,
             escalated=escalated,
             events=events,
+            answer=structured,
         )
 
     def call_tool(self, name: str, args: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -307,23 +321,51 @@ def _messages(system: str, prompt: str, evidence: list[str]) -> list[dict[str, s
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
-def _plan_tools(question: str, owner: str, repo: str) -> list[tuple[str, dict[str, Any]]]:
+def _plan_tools(
+    question: str,
+    owner: str,
+    repo: str,
+    task: dict[str, Any] | None = None,
+) -> list[tuple[str, dict[str, Any]]]:
     planned: list[tuple[str, dict[str, Any]]] = []
+    github = dict((task or {}).get("github") or {})
+    base = {"owner": owner, "repo": repo}
+    issue_n = github.get("issue_number")
+    pr_n = github.get("pr_number")
+    path = github.get("path")
     issue = re.search(r"issue\s+#?(\d+)", question, re.I)
     pull = re.search(r"(?:pull request|pr)\s+#?(\d+)", question, re.I)
-    base = {"owner": owner, "repo": repo}
-    if issue:
-        planned.append(("get_issue", {**base, "issue_number": int(issue.group(1))}))
-    if pull:
-        planned.append(("get_pull_request", {**base, "pull_number": int(pull.group(1))}))
+    if issue_n:
+        planned.append(("issue_read", {**base, "method": "get", "issue_number": int(issue_n)}))
+    elif issue:
+        planned.append(("issue_read", {**base, "method": "get", "issue_number": int(issue.group(1))}))
+    if pr_n:
+        planned.append(("pull_request_read", {**base, "pull_number": int(pr_n)}))
+    elif pull:
+        planned.append(("pull_request_read", {**base, "pull_number": int(pull.group(1))}))
     planned.append(("search_issues", {**base, "query": question}))
     planned.append(("search_code", {**base, "query": question}))
-    if re.search(r"label", question, re.I):
-        planned.append(("list_labels", dict(base)))
+    if task and task.get("type"):
+        planned.append(("list_issues", {**base, "state": "all"}))
+        planned.append(("list_pull_requests", {**base, "state": "all"}))
+    if re.search(r"label", question, re.I) or (task or {}).get("type") == "label":
+        planned.append(("list_label", dict(base)))
+    if path:
+        planned.append(("get_file_contents", {**base, "path": path}))
+        planned.append(("get_file_contents", {**base, "path": "CODEOWNERS"}))
     path_hit = re.search(r"([\w./-]+\.py)", question)
     if path_hit or re.search(r"retry", question, re.I):
-        planned.append(("get_file_contents", {**base, "path": path_hit.group(1) if path_hit else "src/retry.py"}))
+        planned.append(
+            ("get_file_contents", {**base, "path": path_hit.group(1) if path_hit else "src/retry.py"})
+        )
     return planned
+
+
+def _with_answer(text: str, structured: dict[str, Any]) -> str:
+    extra = structured.get("text") if structured else ""
+    if extra and extra not in text:
+        return f"{text}\n{extra}"
+    return text
 
 
 def _has_payload(result: dict[str, Any]) -> bool:

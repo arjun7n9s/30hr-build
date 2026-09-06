@@ -35,6 +35,8 @@ def test_actor_refuses_deny_listed_tools() -> None:
     assert "secret" not in str(denied)
     create = actor.call_tool("create_issue", {"title": "nope"})
     assert create.get("denied") is True
+    write = actor.call_tool("issue_write", {"title": "nope"})
+    assert write.get("denied") is True
     allowed = actor.call_tool("list_issues", {})
     assert allowed.get("denied") is not True
     assert allowed.get("found") is True
