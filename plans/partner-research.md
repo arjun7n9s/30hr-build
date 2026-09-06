@@ -11,7 +11,7 @@
 | Partner / Service | Role in Journeyman | Base URL | Model / Service | Env Var | Auth Prefix |
 |---|---|---|---|---|---|
 | **TensorMux** | Everyday Brain (Actor, Reflect, Patch) | `https://api.tensormux.com/v1` | `glm-4-7-flash` | `TMX_API_KEY` | `tmx_` |
-| **Neatlogs** | Trace System of Record (SoR) & Cockpit | `https://api.neatlogs.com` | OpenTelemetry Tracer / Collector | `NEATLOGS_API_KEY` | `nl_` |
+| **Neatlogs** | Trace System of Record (SoR) & Cockpit | Ingest `https://ingest.neatlogs.com` · cockpit `https://app.neatlogs.com` | HTTP `POST /v1/trace` | `NEATLOGS_API_KEY` | `nlw_` |
 | **AI Grants OpenAI** | Quality-Gate Escalate & Playbook RAG | `https://api.openai.com/v1` | `gpt-5-nano` (escalate)<br>`text-embedding-3-small` (RAG) | `OPENAI_API_KEY` | `sk-` / `sk-proj-` |
 
 ---
@@ -121,11 +121,11 @@ async function runBrainStep(prompt: string) {
 ## 2. Neatlogs Integration
 
 ### 2.1 Auth & Configuration
-- **Environment Variable:** `NEATLOGS_API_KEY`
-- **Header:** `Authorization: Bearer <NEATLOGS_API_KEY>` (or `x-api-key: <NEATLOGS_API_KEY>`)
-- **Base Ingestion URL:** `https://api.neatlogs.com`
-- **Key Prefix:** `nl_` (e.g. `nl_test_...` or `nl_live_...`)
-- **Package:** `neatlogs` (`npm install neatlogs`)
+- **Environment Variable:** `NEATLOGS_API_KEY` (write key), `NEATLOGS_PROJECT_ID` (project **name**), `NEATLOGS_BASE_URL=https://ingest.neatlogs.com`
+- **Header:** `Authorization: Bearer <write-key>`
+- **Base Ingestion URL:** `https://ingest.neatlogs.com` — `POST /v1/trace` nested JSON. Not `app.neatlogs.com`, not `api.neatlogs.com`.
+- **Key Prefix:** `nlw_…` (ingest-only write key)
+- **Verified schema:** `journeyman/src/journeyman/partners/neatlogs.md`
 
 ### 2.2 Exact SDK & Calls (Node/TS)
 Neatlogs provides an OpenTelemetry-based tracing SDK with a custom wrapper for OpenAI clients (`wrapOpenAI`).

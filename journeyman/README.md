@@ -6,9 +6,9 @@ This package is the **source of truth**. `journeyman.contracts` is the only plac
 
 SuperviseCycle (pre-promote):
 
-TraceIngest.poll → FailureJudge.diagnose → skip if not failure → CausalAnalyst.analyze → ProbeFactory.synthesize → resolve baseline → LiveScorer.run_baseline → PromptSurgeon.propose (candidate only) → LiveScorer.run_candidate → ExactReplay.replay → persist postmortem
+TraceIngest.poll → FailureJudge.diagnose → skip if not failure → CausalAnalyst.analyze → ProbeFactory.synthesize → resolve baseline → LiveScorer (aux) → PromptSurgeon.propose (candidate only) → LiveScorer aux candidate → ExactReplay.replay → persist postmortem
 
-Promote uses Eval DEV plus a sealed hold-out (never a Run1 hold score). RedTeam runs after promote on LIVE. Ingest skips `session_id=="test"`, `prompt_variant=="candidate"`, `split=holdout`, and tool-child spans. The seen ring holds 500 ids.
+Promote uses Actor re-eval on frozen DEV plus a sealed hold-out (never a Run1 hold score). LiveScorer is aux inside the cycle only. RedTeam runs after promote on LIVE via `attack_live`. Ingest skips `session_id=="test"`, `prompt_variant=="candidate"`, `split=holdout`, and tool-child spans. The seen ring holds 500 ids.
 
 ## Layout
 
@@ -24,6 +24,12 @@ Promote uses Eval DEV plus a sealed hold-out (never a Run1 hold score). RedTeam 
 ```bash
 python -m pip install -e ".[dev]"
 python -m pytest
-python -m journeyman.demo.run
-python -m journeyman.demo.run --challenge github_triage_v1
+python -m journeyman.demo.run --challenge frozen --mode offline
+python -m journeyman.demo.run --challenge frozen --mode live
+python -m journeyman.demo.run --challenge github_triage_v1 --mode offline
 ```
+
+`--mode live` uses TensorMux/OpenAI HTTP, GitHub MCP readonly against `arjun7n9s/journeyman-fixture`, and Neatlogs ingest when those keys are in local `.env`. Offline shares the same pipeline and branches only at Chat / MCP / Neatlogs IO.
+
+Open `ui/index.html` after a run (or the Vite shell, which reads `web/public/last-report.json`). The UI does not re-run the loop.
+

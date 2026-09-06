@@ -21,9 +21,14 @@ Journeyman is a self-improving agent workbench: it ingests execution traces, jud
 cd journeyman
 python -m pip install -e ".[dev]"
 python -m pytest
-python -m journeyman.demo.run
-python -m journeyman.demo.run --challenge github_triage_v1
+python -m journeyman.demo.run --challenge frozen --mode offline
+python -m journeyman.demo.run --challenge frozen --mode live
+python -m journeyman.demo.run --challenge github_triage_v1 --mode offline
 ```
+
+`--mode live` needs `TMX_API_KEY`, `GITHUB_TOKEN`, and (for traces) `NEATLOGS_API_KEY` + `NEATLOGS_PROJECT_ID` in local `.env`. Never paste keys into chat. Offline uses MCP/chat doubles on the **same** pipeline.
+
+After a run, open `ui/index.html` or the Vite shell (`web/`), which reads `last-report.json`. The UI does not reimplement the loop.
 
 Mechanisms import shapes from `journeyman.contracts` only. Keys stay in local `.env`.
 
