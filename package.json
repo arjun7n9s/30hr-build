@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Journeyman — GitHub MCP repo-triage learning loop",
+  "description": "Journeyman — legacy gather UI/mockups. Product runtime is journeyman/ (Python).",
   "scripts": {
     "dev": "concurrently -k \"npm:dev:api\" \"npm:dev:web\"",
     "dev:api": "tsx watch src/server.ts",
