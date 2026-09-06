@@ -1,14 +1,14 @@
-# Journeyman architecture (locked)
+# Journeyman architecture (integrated)
 
-This is the **finalized** graph. Grafts are in. Implement in the build order below — do not skip ahead to polish boxes.
+Locked loop + partner stack. Keys live in local `.env` only. Never paste keys into chat.
 
 - **Track:** Automated Agent Engineering
-- **Third-party (pinned):** GitHub official MCP, readonly for eval (`https://api.githubcopilot.com/mcp/readonly`)
-- **Workspace:** `arjun7n9s/journeyman-fixture`
-- **Task family:** repo triage / grounding
-- **Metrics every run:** accuracy, cost (tools + tokens), speed (ms)
-
-See [plans/SPEC.md](plans/SPEC.md) for tasks, policy, and eval splits.
+- **Task family:** repo triage / grounding on `arjun7n9s/journeyman-fixture`
+- **Third-party app:** GitHub MCP readonly
+- **Everyday brain:** TensorMux `https://api.tensormux.com/v1` / `glm-4-7-flash` / `TMX_API_KEY`
+- **Trace SoR:** Neatlogs (`NEATLOGS_API_KEY`) — Trace cockpit reads this
+- **Escalator + embeddings:** AI Grants OpenAI at `https://api.openai.com/v1` — `gpt-5-nano` on a logged quality-gate miss; `text-embedding-3-small` (ada-002 backup) for playbook RAG only
+- **Skip v1:** Smallest.ai voice, Dodo infra, prize-credit boxes
 
 ```mermaid
 flowchart TB
@@ -32,6 +32,7 @@ flowchart TB
     EvalDev[Eval DEV]
     EvalHold[Eval HELD-OUT]
     RedTeam[RedTeam on LIVE]
+    Embed[Playbook RAG]
   end
 
   subgraph memory [Memory]
@@ -42,22 +43,49 @@ flowchart TB
     Versions[(Active version pointer)]
   end
 
-  subgraph tools [Third-party]
+  subgraph partners [Partner stack]
+    TMX[TensorMux glm-4-7-flash]
+    NL[Neatlogs spans]
+    OAI[AI Grants OpenAI]
+    Nano[gpt-5-nano escalate]
+    EmbModel[text-embedding-3-small]
+  end
+
+  subgraph tools [Third-party app]
     MCP[GitHub MCP readonly]
   end
 
   Judge([Judge]) --> Challenge
   Judge --> PromoteUI
+  Judge --> Trace
 
-  Playbook -->|retrieved every run| Actor
+  Playbook --> Embed
+  EmbModel --> Embed
+  Embed -->|quirks this run| Actor
   Scripts -->|retrieved every run| Actor
   Versions -->|active playbook| Actor
   Playbook -->|seen pattern to cheap path| Router
 
   Challenge --> Router --> Actor
   Actor --> Gates --> Policy --> MCP --> Actor
+
+  Actor --> TMX
+  Reflect --> TMX
+  Patch --> TMX
+  TMX -->|tokens latency cost| Traces
+  TMX -->|quality gate miss| Nano
+  Nano -->|logged escalate| OAI
+  OAI --> Reflect
+  OAI --> Patch
+  OAI --> Actor
+  OAI -->|embeddings only| EmbModel
+
   Actor --> Traces
-  Traces --> Trace
+  Traces --> NL
+  TMX --> NL
+  Nano --> NL
+  MCP --> NL
+  NL --> Trace
   Traces --> Runs
 
   Traces --> Reflect
@@ -88,36 +116,46 @@ flowchart TB
   PromoteUI -->|rejected| Actor
 
   Versions -->|LIVE| RedTeam
+  RedTeam --> TMX
   RedTeam -->|fail| Patch
+  RedTeam --> NL
   RedTeam --> Runs
 
   Challenge -.->|never writes| EvalHold
 ```
 
-## Grafts (locked in)
+## Partner rules
 
-Router, Gates, Patch + Budget, RedTeam, Scripts, Journal, Rollback on Promote.
+| Partner | Role | Not for |
+|---|---|---|
+| **TensorMux** | Daily Actor / Reflect / Patch / RedTeam model calls. Every call writes tokens, latency, rough $ into the run trace and a Neatlogs span. | Embeddings |
+| **Neatlogs** | System of record for traces. Every tool hop and model call is a span: run id, challenge, version, role (`actor` / `reflect` / `patch` / `eval` / `redteam`), tool, success/error, timing, tokens, playbook hits. Fail → patch → replay = same run family, before and after. | Replacing Runs scores |
+| **AI Grants OpenAI** | Escalator: `gpt-5-nano` only after a logged TensorMux quality-gate miss on Reflect, Patch, or a hard Actor step. Embeddings: playbook RAG. Base URL `https://api.openai.com/v1`. | Daily driver |
+| **GitHub MCP** | The third-party app the agent learns. | Writes in DEV/hold-out |
+| **Smallest.ai / Dodo** | Keys may exist in `.env`. Not architecture boxes in v1. | |
+
+## Grafts
+
+Router, Gates, Patch + Budget, RedTeam, Scripts, Journal, Rollback, TensorMux, Neatlogs, OpenAI escalate + embeddings.
 
 ## Build order
 
-Do not implement later stages before earlier ones work and can be shown.
+1. **Actor ↔ MCP ↔ Traces ↔ Neatlogs** — Challenge → router stub → actor → gates stub → policy → GitHub MCP. TensorMux flash for the actor. Every hop + model call is a Neatlogs span with tokens/latency/cost.
+2. **Reflect → Playbook / Journal + RAG** — DEV traces → diffable playbook + journal lesson. Embeddings from OpenAI only. Next run retrieves playbook via RAG. Escalate Reflect to nano only on a logged gate miss.
+3. **Eval DEV** — frozen 10-task DEV: accuracy / cost / speed. Runs shows v0 vs later. Eval spans in Neatlogs.
+4. **Patch + Budget** — TensorMux proposes a candidate; N tries / no-improve stop. Escalate Patch to nano if weak. Do not promote a failing exhaust. Replay the same Neatlogs run family.
+5. **Promote / held-out** — candidate-only sealed hold-out; approve / reject / rollback.
+6. **Router / Gates / RedTeam polish** — cheap path on seen patterns; gates in front of policy; red-team on LIVE still traced in Neatlogs.
 
-1. **Actor ↔ MCP ↔ Traces** — Challenge hits actor; policy-gated GitHub MCP; every run writes a trace.
-2. **Reflect → Playbook / Journal** — DEV traces become a diffable playbook version and an appended journal lesson. Next run retrieves playbook (and scripts when they exist).
-3. **Eval DEV** — frozen 10-task DEV scores accuracy / cost / speed. Runs shows v0 vs later.
-4. **Patch + Budget** — synthesizer proposes a candidate; N tries / no-improve stop. Do not promote a failing exhaust.
-5. **Promote / held-out** — candidate-only sealed hold-out; approve activates version; rollback restores prior pointer.
-6. **Router / Gates / RedTeam polish** — cheap path on seen patterns; context gates in front of policy; red-team on LIVE writes fails into Patch and Runs.
-
-Invariant through every stage: Challenge never writes hold-out. Hold-out never trains playbook or journal.
+Invariant: Challenge never writes hold-out. Hold-out never trains playbook or journal. OpenAI never appears unless a gate miss is logged, except embeddings.
 
 ## Locked interfaces
 
 | Surface | Shows |
 |---|---|
-| Challenge | Judge task in; classify/answer via MCP + active playbook/scripts |
-| Runs | DEV vs hold-out, v0 vs vN, three metrics; later red-team rows |
-| Trace | Step-through tool spans, args, result, cost, latency |
-| Playbook | Active version + facts learned from the fixture repo |
-| Journal | Append-only lessons from reflection (markdown) |
-| Promote / Rollback | DEV score + hold-out headline; approve, reject, rollback |
+| Challenge | Judge task in; MCP + active playbook/scripts |
+| Runs | DEV vs hold-out, v0 vs vN, accuracy / cost / speed; later red-team rows. Cost comes from TensorMux/OpenAI traces. |
+| Trace | Neatlogs cockpit: spans for tools and model calls, before/after a patch replay |
+| Playbook | Active version + RAG-retrieved facts |
+| Journal | Append-only reflection lessons |
+| Promote / Rollback | DEV + hold-out headline; approve, reject, rollback |

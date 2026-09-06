@@ -1,16 +1,8 @@
-# Journeyman architecture (locked)
+# Journeyman architecture (integrated)
 
 Canonical copy: [../architecture.md](../architecture.md)
 
-This is the **finalized** graph. Grafts are in. Implement in the build order below — do not skip ahead to polish boxes.
-
-- **Track:** Automated Agent Engineering
-- **Third-party (pinned):** GitHub official MCP, readonly for eval (`https://api.githubcopilot.com/mcp/readonly`)
-- **Workspace:** `arjun7n9s/journeyman-fixture`
-- **Task family:** repo triage / grounding
-- **Metrics every run:** accuracy, cost (tools + tokens), speed (ms)
-
-See [SPEC.md](./SPEC.md) for tasks, policy, and eval splits.
+See the root file for partner rules, build order, and locked interfaces.
 
 ```mermaid
 flowchart TB
@@ -34,6 +26,7 @@ flowchart TB
     EvalDev[Eval DEV]
     EvalHold[Eval HELD-OUT]
     RedTeam[RedTeam on LIVE]
+    Embed[Playbook RAG]
   end
 
   subgraph memory [Memory]
@@ -44,22 +37,49 @@ flowchart TB
     Versions[(Active version pointer)]
   end
 
-  subgraph tools [Third-party]
+  subgraph partners [Partner stack]
+    TMX[TensorMux glm-4-7-flash]
+    NL[Neatlogs spans]
+    OAI[AI Grants OpenAI]
+    Nano[gpt-5-nano escalate]
+    EmbModel[text-embedding-3-small]
+  end
+
+  subgraph tools [Third-party app]
     MCP[GitHub MCP readonly]
   end
 
   Judge([Judge]) --> Challenge
   Judge --> PromoteUI
+  Judge --> Trace
 
-  Playbook -->|retrieved every run| Actor
+  Playbook --> Embed
+  EmbModel --> Embed
+  Embed -->|quirks this run| Actor
   Scripts -->|retrieved every run| Actor
   Versions -->|active playbook| Actor
   Playbook -->|seen pattern to cheap path| Router
 
   Challenge --> Router --> Actor
   Actor --> Gates --> Policy --> MCP --> Actor
+
+  Actor --> TMX
+  Reflect --> TMX
+  Patch --> TMX
+  TMX -->|tokens latency cost| Traces
+  TMX -->|quality gate miss| Nano
+  Nano -->|logged escalate| OAI
+  OAI --> Reflect
+  OAI --> Patch
+  OAI --> Actor
+  OAI -->|embeddings only| EmbModel
+
   Actor --> Traces
-  Traces --> Trace
+  Traces --> NL
+  TMX --> NL
+  Nano --> NL
+  MCP --> NL
+  NL --> Trace
   Traces --> Runs
 
   Traces --> Reflect
@@ -90,23 +110,10 @@ flowchart TB
   PromoteUI -->|rejected| Actor
 
   Versions -->|LIVE| RedTeam
+  RedTeam --> TMX
   RedTeam -->|fail| Patch
+  RedTeam --> NL
   RedTeam --> Runs
 
   Challenge -.->|never writes| EvalHold
 ```
-
-## Grafts (locked in)
-
-Router, Gates, Patch + Budget, RedTeam, Scripts, Journal, Rollback on Promote.
-
-## Build order
-
-1. Actor ↔ MCP ↔ Traces
-2. Reflect → Playbook / Journal
-3. Eval DEV
-4. Patch + Budget
-5. Promote / held-out
-6. Router / Gates / RedTeam polish
-
-Invariant: Challenge never writes hold-out. Hold-out never trains playbook or journal.

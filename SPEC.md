@@ -9,8 +9,8 @@ Pinned. Do not reopen the third-party choice.
   - Write (only if Challenge later needs it; v1 is read-only): `https://api.githubcopilot.com/mcp/`
 - **Workspace:** seeded fixture repo `arjun7n9s/journeyman-fixture` (create if missing)
 - **Task family:** repo triage / grounding (same tools, varied asks)
-- **Architecture:** locked in [architecture.md](architecture.md). Grafts in: Router, Gates, Patch+Budget, RedTeam, Scripts, Journal, Rollback.
-- **Build order:** Actor↔MCP↔Traces → Reflect→Playbook/Journal → EvalDev → Patch+Budget → Promote/held-out → Router/Gates/RedTeam polish.
+- **Architecture:** locked in [architecture.md](architecture.md). Grafts in: Router, Gates, Patch+Budget, RedTeam, Scripts, Journal, Rollback, TensorMux, Neatlogs, OpenAI escalate + embeddings.
+- **Build order:** Actor↔MCP↔Traces↔Neatlogs → Reflect→Playbook/Journal+RAG → EvalDev → Patch+Budget → Promote/held-out → Router/Gates/RedTeam polish.
 
 ## Policy allowlist
 
