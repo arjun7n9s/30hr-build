@@ -6,7 +6,7 @@
   "description": "Journeyman — legacy gather UI/mockups. Product runtime is journeyman/ (Python).",
   "scripts": {
     "dev": "concurrently -k \"npm:dev:api\" \"npm:dev:web\"",
-    "dev:api": "tsx watch src/server.ts",
+    "dev:api": "python -c \"import os,sys; sys.path.insert(0,'journeyman/src'); os.environ.setdefault('PORT','8787'); os.environ.setdefault('JOURNEYMAN_WORK_ROOT','.tmp-ui'); from journeyman.server.__main__ import main; main()\"",
     "dev:web": "vite",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "start": "tsx src/server.ts",

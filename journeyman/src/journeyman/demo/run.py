@@ -29,7 +29,7 @@ from journeyman.journal import JournalStore
 from journeyman.memory import MemoryStore
 from journeyman.partners.chat import ChatClient
 from journeyman.partners.mcp import GithubMcp
-from journeyman.partners.sink import NeatlogsTraceSink, emit_node, flush_sink
+from journeyman.partners.sink import NeatlogsTraceSink, dashboard_trace_url, emit_node, flush_sink
 from journeyman.reflect import Reflect
 from journeyman.runtime import SuperviseCycle
 from journeyman.runtime.actor import Actor, ActorTurn
@@ -79,6 +79,7 @@ class DemoReport:
     journal_text: str = ""
     diff_text: str = ""
     playbook_entries: list[dict[str, Any]] = field(default_factory=list)
+    playbook_rules: list[dict[str, Any]] = field(default_factory=list)
     redteam: dict[str, Any] | None = None
     children: list[dict[str, Any]] = field(default_factory=list)
     repo: str = "arjun7n9s/journeyman-fixture"
@@ -353,7 +354,7 @@ def run_demo(
     if hasattr(sink, "cockpit_url"):
         neatlogs_url = sink.cockpit_url()
     elif trace_id:
-        neatlogs_url = f"https://app.neatlogs.com/?trace_id={trace_id}"
+        neatlogs_url = dashboard_trace_url(trace_id)
     children = []
     payload = getattr(sink, "last_payload", None)
     if isinstance(payload, dict):
@@ -381,6 +382,7 @@ def run_demo(
         journal_text=journal_text,
         diff_text=diff_text,
         playbook_entries=[entry.model_dump() for entry in playbook.entries],
+        playbook_rules=[_rule_view(rule) for rule in playbook.rules],
         redteam=redteam,
         children=children,
         repo=challenge.repo,
@@ -405,8 +407,7 @@ def render(report: DemoReport) -> str:
         f"pointer active={report.pointer.active} candidate={report.pointer.candidate}",
         f"eval wilson=({report.eval_result.wilson_low}, {report.eval_result.wilson_high})",
         f"candidate version={report.candidate_version or ''} status={VersionStatus.CANDIDATE.value} until promote",
-        f"neatlogs trace_id={neat}",
-        f"neatlogs url={report.neatlogs_url or '(disabled)'}",
+        f"neatlogs trace_id={neat} {report.neatlogs_url}",
         f"journal {report.journal_path}",
         f"candidate diff {report.diff_path}",
         f"report json {report.report_path}",
@@ -417,6 +418,22 @@ def render(report: DemoReport) -> str:
             f"redteam live pass={report.redteam['pass_rate']:.2f} n={report.redteam['n']}"
         )
     return "\n".join(lines)
+
+
+def _rule_view(rule: Any) -> dict[str, Any]:
+    """Slim human rule for the artifact UI. Not CORE.md telemetry."""
+    evidence = getattr(rule, "evidence", None)
+    origin = getattr(evidence, "origin", None)
+    return {
+        "id": rule.id,
+        "text": rule.describe(),
+        "kind": rule.kind.value if hasattr(rule.kind, "value") else str(rule.kind),
+        "status": rule.status.value if hasattr(rule.status, "value") else str(getattr(rule, "status", "")),
+        "origin": origin.value if hasattr(origin, "value") else str(origin or ""),
+        "source": getattr(evidence, "source", "") or "",
+        "refs": list(getattr(evidence, "refs", []) or []),
+        "note": getattr(evidence, "note", "") or "",
+    }
 
 
 def rollback_demo(work_root: Path) -> VersionPointer:

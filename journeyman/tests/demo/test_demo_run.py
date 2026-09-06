@@ -111,6 +111,10 @@ def test_frozen_demo_offline_improves(tmp_path: Path) -> None:
         assert any(
             rule["evidence"]["origin"] == "mined" for rule in promoted_book["rules"]
         ), "the promoted version carries rules mined from labeled corpus issues"
+        payload = json.loads(report.report_path.read_text(encoding="utf-8"))
+        assert payload["playbook_rules"], "last-report exposes human rule text for the UI"
+        assert all(rule.get("text") for rule in payload["playbook_rules"])
+        assert "Run1 DEV" in payload["journal"]
 
 
 def test_promote_requires_holdout(tmp_path: Path) -> None:

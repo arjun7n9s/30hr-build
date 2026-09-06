@@ -56,6 +56,20 @@ def test_flush_posts_bearer_nested_tree() -> None:
     assert payload["children"][1]["model"] == "glm-4-7-flash"
 
 
+def test_cockpit_url_is_traces_path(monkeypatch) -> None:
+    from journeyman.partners.sink import dashboard_trace_url
+
+    monkeypatch.delenv("NEATLOGS_ORG_ID", raising=False)
+    monkeypatch.delenv("NEATLOGS_DASHBOARD_PROJECT_ID", raising=False)
+    assert dashboard_trace_url(None) == "https://app.neatlogs.com"
+    assert dashboard_trace_url("abc") == "https://app.neatlogs.com/traces/abc"
+    monkeypatch.setenv("NEATLOGS_ORG_ID", "org-1")
+    monkeypatch.setenv("NEATLOGS_DASHBOARD_PROJECT_ID", "proj-1")
+    assert dashboard_trace_url("abc") == (
+        "https://app.neatlogs.com/traces/abc?orgId=org-1&projectId=proj-1"
+    )
+
+
 def test_remap_drops_guessed_hosts() -> None:
     sink = NeatlogsTraceSink(api_key="k", project_id="p", base_url="https://api.neatlogs.com")
     assert sink.base_url == INGEST_BASE

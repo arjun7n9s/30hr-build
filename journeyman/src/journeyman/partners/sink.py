@@ -137,9 +137,19 @@ class NeatlogsTraceSink:
             return None
 
     def cockpit_url(self) -> str:
-        if self.last_trace_id:
-            return f"{DASHBOARD}/?trace_id={self.last_trace_id}"
+        return dashboard_trace_url(self.last_trace_id)
+
+
+def dashboard_trace_url(trace_id: str | None) -> str:
+    """Cockpit deep link. `/?trace_id=` is the home page — traces live under /traces/{id}."""
+    if not trace_id:
         return DASHBOARD
+    url = f"{DASHBOARD}/traces/{trace_id}"
+    org = os.environ.get("NEATLOGS_ORG_ID", "")
+    project = os.environ.get("NEATLOGS_DASHBOARD_PROJECT_ID", "")
+    if org and project:
+        return f"{url}?orgId={org}&projectId={project}"
+    return url
 
 
 def emit_node(

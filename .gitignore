@@ -17,5 +17,6 @@ venv/
 web/public/last-report.json
 .tmp-live/
 .tmp-e2e/
+.tmp-ui/
 journeyman/.tmp-live/
 journeyman/.tmp-e2e/

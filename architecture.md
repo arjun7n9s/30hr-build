@@ -130,7 +130,8 @@ Live GitHub MCP is JSON-RPC over SSE (`initialize` + `Mcp-Session-Id` + `tools/c
 | Traces → NL | `journeyman.partners.sink.NeatlogsTraceSink` |
 | Chat cheap/escalate | `journeyman.partners.chat.ChatClient` |
 | CLI + promote | `journeyman.demo.run` |
-| UI | `journeyman.demo.ui` + `web/src/App.tsx` (readers) |
+| HTTP API | `journeyman.server` (`/api/health|/report|/run|/challenge|/rollback`) — wraps the CLI, not a second loop |
+| UI | `journeyman.demo.ui` + `web/src/App.tsx` (readers + thin API client) |
 
 ## Partner rules
 

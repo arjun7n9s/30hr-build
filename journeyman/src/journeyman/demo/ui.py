@@ -22,28 +22,32 @@ _HTML = """<!doctype html>
   <title>Journeyman</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
-    :root { --cream:#F3E9D8; --ink:#111111; --poster:#F04E2E; }
+    :root { --bg:#09090b; --surface:#0c0c0e; --border:#27272a; --text:#fafafa; --muted:#a1a1aa; --accent:#818cf8; }
     * { box-sizing: border-box; }
-    html, body { margin: 0; background: var(--cream); color: var(--ink); font-family: "IBM Plex Sans", sans-serif; }
+    html, body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter, system-ui, sans-serif; font-size: 14px; }
     button, a, [role="button"] { cursor: pointer; }
-    .shell { max-width: 1120px; margin: 0 auto; padding: 1.4rem 1.2rem 3rem; }
-    header { display: flex; justify-content: space-between; gap: 1rem; border-bottom: 2px solid var(--ink); padding-bottom: 0.9rem; }
-    h1 { margin: 0; font-family: "IBM Plex Sans", sans-serif; font-size: 1.45rem; font-weight: 600; }
-    .kicker { margin: 0 0 0.2rem; font-family: "IBM Plex Mono", monospace; font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase; }
-    .meta { font-family: "IBM Plex Mono", monospace; font-size: 0.75rem; text-align: right; }
-    nav { display: flex; gap: 0; margin: 1rem 0; border-bottom: 2px solid var(--ink); }
-    .tab { background: transparent; border: 0; border-bottom: 4px solid transparent; padding: 0.6rem 0.85rem; font: inherit; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.78rem; }
-    .tab.active { border-bottom-color: var(--poster); }
-    .panel { border: 2px solid var(--ink); background: var(--cream); padding: 1rem; margin: 0.7rem 0; box-shadow: 7px 7px 0 var(--poster); }
-    .metric { font-size: 3rem; line-height: 0.94; font-weight: 600; }
-    pre { white-space: pre-wrap; font-family: "IBM Plex Mono", monospace; font-size: 0.82rem; }
-    a { color: var(--ink); }
-    .stamp { background: var(--ink); color: var(--cream); border: 0; padding: 0.7rem 1rem; font-weight: 600; box-shadow: 7px 7px 0 var(--poster); }
-    .stamp:hover { transform: translate(3px, 3px); background: var(--poster); color: var(--ink); }
+    .shell { max-width: 1120px; margin: 0 auto; padding: 28px 24px 64px; }
+    header { display: flex; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+    h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+    .kicker { margin: 0 0 4px; color: #71717a; font-size: 12px; font-weight: 500; }
+    .meta { color: var(--muted); font-size: 12px; text-align: right; }
+    nav { display: flex; gap: 2px; margin: 16px 0 24px; border-bottom: 1px solid var(--border); }
+    .tab { background: transparent; border: 0; border-bottom: 1px solid transparent; margin-bottom: -1px; padding: 10px 12px; color: var(--muted); font: inherit; font-size: 13px; font-weight: 500; }
+    .tab.active { color: var(--text); border-bottom-color: var(--text); }
+    .panel { border: 1px solid var(--border); background: var(--surface); border-radius: 8px; padding: 14px 16px; margin: 12px 0; }
+    .story { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    @media (max-width: 900px) { .story { grid-template-columns: 1fr; } }
+    .metric { font-size: 36px; line-height: 1.05; font-weight: 600; letter-spacing: -0.04em; }
+    pre { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--muted); }
+    a { color: var(--accent); }
+    .stamp { background: var(--text); color: var(--bg); border: 1px solid var(--text); border-radius: 6px; padding: 6px 10px; font-weight: 500; font-size: 13px; }
+    .stamp:hover { background: #e4e4e7; }
+    .seal { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); padding: 4px 10px; font-size: 12px; }
     table { width: 100%; border-collapse: collapse; }
-    th, td { text-align: left; padding: 0.35rem 0.2rem; border-bottom: 1px solid var(--ink); font-size: 0.9rem; }
+    th, td { text-align: left; padding: 7px 4px; border-bottom: 1px solid var(--border); font-size: 13px; }
+    ul { margin: 0; padding-left: 1.1rem; }
   </style>
 </head>
 <body>
@@ -70,13 +74,69 @@ _HTML = """<!doctype html>
     const pct = (n) => n == null ? "—" : Math.round(n * 100) + "%";
     document.getElementById("meta").innerHTML =
       `<div>${R.repo || ""}</div><div>mode ${R.mode}</div><div>active ${R.pointer.active}</div>`;
+    const telemetry = /^(?:[-*]\\s*)?(?:Run\\d+\\s+DEV\\b|Reflect merged\\b|promoted\\s|Derived\\s|Mined\\s|candidate held\\b|postmortem\\s)/i;
+    const failureDump = /When asked .+ do not invent\\.\\s*Failed with/i;
+    const weakAdvice = /be helpful and confident|guess if you are unsure/i;
+    const toolDump = /\\{['"]found['"]|get_file_contents:|pull_request_read:|issue_read:|list_issues:|From repo evidence/i;
+    const humanize = (text) => text
+      .replace(/^WHEN\\s+/i, "If ")
+      .replace(/\\s+THEN\\s+/i, ", ")
+      .replace(/\\['([^']+)'\\]/g, "$1")
+      .replace(/\\["([^"]+)"\\]/g, "$1")
+      .replace(/\\bcontains\\b/g, "mentions")
+      .replace(/\\bset owner=/g, "set owner to ")
+      .replace(/\\badd labels=/g, "add label ")
+      .trim();
+    const isHuman = (line) => {
+      const t = (line || "").trim();
+      return t.length >= 12 && t.length <= 280 && !telemetry.test(t) && !failureDump.test(t) && !weakAdvice.test(t) && !toolDump.test(t);
+    };
+    const lessons = (() => {
+      const out = [];
+      const seen = new Set();
+      const push = (id, text) => {
+        const key = text.toLowerCase();
+        if (seen.has(key) || !isHuman(text)) return;
+        seen.add(key);
+        out.push({ id, text });
+      };
+      (R.playbook_entries || []).forEach((entry) => {
+        if ((entry.tags || []).includes("weak")) return;
+        String(entry.text || "").split(/\\n+/).forEach((chunk) => {
+          push(entry.id, chunk.replace(/^[-*]\\s*/, "").replace(/^Rule:\\s*/i, "").trim());
+        });
+      });
+      (R.playbook_rules || []).forEach((rule) => push(rule.id, humanize(rule.text || "")));
+      return out;
+    })();
+    const systemLog = String(R.journal || "").split(/\\r?\\n/)
+      .map((line) => line.replace(/^[-*]\\s*/, "").trim())
+      .filter((line) => telemetry.test(line));
+    const lessonHtml = (items) => items.length
+      ? `<ul>${items.map((item) => `<li>${item.text}</li>`).join("")}</ul>`
+      : `<p>No human lessons yet. Run <code>python -m journeyman.demo.run --challenge frozen --mode offline</code>.</p>`;
     const pages = {
       challenge: () => `<section>
-        <p class="kicker">Frozen eval. Loop is python -m journeyman.demo.run — this page only reads last.json.</p>
+        <p class="kicker">Challenge ${R.challenge_id} · Cold → Learn → Warm</p>
+        <p class="seal">Hold-out never trained the playbook.</p>
+        <div class="story">
         <div class="panel">
-          <p>Challenge <strong>${R.challenge_id}</strong> on ${R.repo || "arjun7n9s/journeyman-fixture"}.</p>
-          <p>DEV n=${R.run1 && R.run1.n} · hold-out n=${R.hold_candidate ? R.hold_candidate.n : "sealed until promote"}.</p>
-          <p>Mode <strong>${R.mode}</strong>. Hold-out stays sealed until a candidate improves DEV.</p>
+          <p class="kicker">1 · Cold</p>
+          <p>Run1 DEV on a weak / empty playbook: <strong>${pct(R.run1 && R.run1.pass_rate)}</strong> pass · cost ${R.run1 && R.run1.cost} · ${(R.run1 && R.run1.tool_calls) || 0} tools · ${(R.run1 && R.run1.tokens) || 0} tok.</p>
+        </div>
+        <div class="panel">
+          <p class="kicker">2 · Learn</p>
+          <p>Human lessons from the playbook (not CORE.md telemetry).</p>
+          ${lessonHtml(lessons.slice(0, 4))}
+          <p><button class="stamp" data-goto="playbook">Open Playbook</button></p>
+        </div>
+        <div class="panel">
+          <p class="kicker">3 · Warm</p>
+          <p>RunN DEV <strong>${pct(R.run_n && R.run_n.pass_rate)}</strong> vs Run1 ${pct(R.run1 && R.run1.pass_rate)} · cost ${R.run_n && R.run_n.cost} vs ${R.run1 && R.run1.cost} · ${R.promoted ? "PROMOTED" : "HELD"}.</p>
+          <p>Hold-out stayed sealed until promote${R.hold_candidate ? ` (prior ${pct(R.hold_prior && R.hold_prior.pass_rate)} → candidate ${pct(R.hold_candidate.pass_rate)})` : ""}.</p>
+          <p>Hold-out never trained the playbook.</p>
+          ${R.neatlogs_url ? `<p><a href="${R.neatlogs_url}">Open Neatlogs</a></p>` : ""}
+        </div>
         </div>
       </section>`,
       runs: () => `<section>
@@ -99,8 +159,12 @@ _HTML = """<!doctype html>
         <div class="panel"><p class="kicker">Candidate diff</p><pre>${R.diff || ""}</pre></div>
       </section>`,
       journal: () => `<section>
-        <p class="kicker">${R.journal_path || ""}</p>
-        <div class="panel"><pre>${R.journal || "No lessons yet."}</pre></div>
+        <p class="kicker">Lessons are playbook text. Pipeline telemetry stays in System log.</p>
+        <div class="panel">
+          <p class="kicker">Lessons</p>
+          ${lessonHtml(lessons)}
+        </div>
+        ${systemLog.length ? `<details class="panel"><summary>System log — CORE.md / persist_lesson telemetry</summary><pre>${systemLog.join("\\n")}</pre></details>` : ""}
       </section>`,
       promote: () => `<section>
         <p class="kicker">Promote gate is Actor re-eval on frozen JSON. LiveScorer is aux only.</p>
@@ -119,7 +183,11 @@ _HTML = """<!doctype html>
       main.innerHTML = pages[id]();
     }
     document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => show(t.dataset.tab)));
-    show("runs");
+    document.addEventListener("click", (ev) => {
+      const go = ev.target && ev.target.closest && ev.target.closest("[data-goto]");
+      if (go) show(go.dataset.goto);
+    });
+    show("challenge");
   </script>
 </body>
 </html>
