@@ -46,7 +46,23 @@ class CostRouter:
         self.embed_model = os.environ.get("OPENAI_EMBEDDING_MODEL", EMBED_MODEL)
         self.embed_fallback = os.environ.get("OPENAI_EMBEDDING_FALLBACK", EMBED_FALLBACK)
 
+    def decide(
+        self,
+        prompt: str,
+        cheap_output: str | None = None,
+        score: float | None = None,
+    ) -> CostRouterDecision:
+        if cheap_output is None:
+            return self._try_first(prompt)
+        return self._after_quality(cheap_output, score)
+
     def try_first(self, prompt: str) -> CostRouterDecision:
+        return self.decide(prompt)
+
+    def after_quality(self, cheap_output: str, score: float | None = None) -> CostRouterDecision:
+        return self.decide("", cheap_output, score)
+
+    def _try_first(self, prompt: str) -> CostRouterDecision:
         del prompt
         return CostRouterDecision(
             choice=RouteChoice.CHEAP,
@@ -55,7 +71,7 @@ class CostRouter:
             estimated_cost=0.0,
         )
 
-    def after_quality(self, cheap_output: str, score: float | None = None) -> CostRouterDecision:
+    def _after_quality(self, cheap_output: str, score: float | None = None) -> CostRouterDecision:
         gate = self.quality_gate(cheap_output, score)
         if gate.passed:
             return CostRouterDecision(

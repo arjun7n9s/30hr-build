@@ -91,10 +91,10 @@ def test_cost_router_try_first_then_escalate(tmp_path: Path) -> None:
     env = tmp_path / ".env"
     env.write_text("TMX_API_KEY=tmx_test\nOPENAI_API_KEY=sk-test\n", encoding="utf-8")
     router = CostRouter(env)
-    first = router.try_first("summarize the issue")
+    first = router.decide("summarize the issue")
     assert first.choice is RouteChoice.CHEAP
     assert first.model == CHEAP_MODEL
-    miss = router.after_quality("")
+    miss = router.decide("summarize the issue", cheap_output="")
     assert miss.choice is RouteChoice.ESCALATE
     assert miss.gate_miss is True
     assert miss.escalate_reason is EscalateReason.EMPTY_OUTPUT
