@@ -2,8 +2,6 @@
 
 Canonical copy: [../architecture.md](../architecture.md)
 
-See the root file for partner rules, build order, and locked interfaces.
-
 ```mermaid
 flowchart TB
   subgraph ui [Browser UI]
@@ -39,10 +37,8 @@ flowchart TB
 
   subgraph partners [Partner stack]
     TMX[TensorMux glm-4-7-flash]
-    NL[Neatlogs spans]
+    NL[Neatlogs]
     OAI[AI Grants OpenAI]
-    Nano[gpt-5-nano escalate]
-    EmbModel[text-embedding-3-small]
   end
 
   subgraph tools [Third-party app]
@@ -54,7 +50,7 @@ flowchart TB
   Judge --> Trace
 
   Playbook --> Embed
-  EmbModel --> Embed
+  Embed -->|text-embedding-3-small| OAI
   Embed -->|quirks this run| Actor
   Scripts -->|retrieved every run| Actor
   Versions -->|active playbook| Actor
@@ -63,24 +59,23 @@ flowchart TB
   Challenge --> Router --> Actor
   Actor --> Gates --> Policy --> MCP --> Actor
 
-  Actor --> TMX
-  Reflect --> TMX
-  Patch --> TMX
-  TMX -->|tokens latency cost| Traces
-  TMX -->|quality gate miss| Nano
-  Nano -->|logged escalate| OAI
-  OAI --> Reflect
-  OAI --> Patch
-  OAI --> Actor
-  OAI -->|embeddings only| EmbModel
+  Actor -->|default| TMX
+  Reflect -->|default| TMX
+  Patch -->|default| TMX
+  RedTeam -->|default| TMX
+
+  Actor -->|gate miss: gpt-5-nano| OAI
+  Reflect -->|gate miss: gpt-5-nano| OAI
+  Patch -->|gate miss: gpt-5-nano| OAI
 
   Actor --> Traces
+  Reflect --> Traces
+  Patch --> Traces
+  RedTeam --> Traces
+  EvalDev --> Traces
+  Traces -->|tokens latency cost| Runs
   Traces --> NL
-  TMX --> NL
-  Nano --> NL
-  MCP --> NL
   NL --> Trace
-  Traces --> Runs
 
   Traces --> Reflect
   Playbook -->|merge / supersede| Reflect
@@ -110,9 +105,7 @@ flowchart TB
   PromoteUI -->|rejected| Actor
 
   Versions -->|LIVE| RedTeam
-  RedTeam --> TMX
   RedTeam -->|fail| Patch
-  RedTeam --> NL
   RedTeam --> Runs
 
   Challenge -.->|never writes| EvalHold
