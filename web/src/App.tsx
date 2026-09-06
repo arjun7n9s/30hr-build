@@ -41,8 +41,7 @@ export function App() {
   }, []);
 
   return (
-    <div className="paper">
-      <div className="grain" />
+    <div className="app">
       <div className="shell">
         <header className="top">
           <div>

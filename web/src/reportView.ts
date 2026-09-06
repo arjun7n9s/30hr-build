@@ -60,6 +60,8 @@ const TELEMETRY_LINE =
 
 const FAILURE_DUMP = /When asked .+ do not invent\.\s*Failed with/i;
 const WEAK_ADVICE = /be helpful and confident|guess if you are unsure/i;
+const TOOL_DUMP =
+  /\{['"]found['"]|get_file_contents:|pull_request_read:|issue_read:|list_issues:|From repo evidence/i;
 
 export function isTelemetryLine(line: string): boolean {
   const trimmed = line.trim();
@@ -94,7 +96,7 @@ function isHumanLesson(text: string): boolean {
   if (isTelemetryLine(line)) return false;
   if (FAILURE_DUMP.test(line)) return false;
   if (WEAK_ADVICE.test(line)) return false;
-  if (/^From repo evidence:/i.test(line)) return false;
+  if (TOOL_DUMP.test(line)) return false;
   return true;
 }
 

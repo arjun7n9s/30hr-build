@@ -27,7 +27,8 @@ const ENTRIES = [
     text:
       "Answer only from retrieved evidence. If evidence is missing, say so.\n\n" +
       "Rule: cite evidence or refuse when tools are empty. Do not invent facts when tools return nothing.\n" +
-      "When asked `What labels should this issue get?` do not invent. Failed with `From repo evidence:`. Cite tools. If missing, say so.",
+      "When asked `What labels should this issue get?` do not invent. Failed with `From repo evidence:`.\n" +
+      "get_file_contents: {'found': True, 'path': 'CONTRIBUTING.md', 'content': '# Contributing'}. Cite tools. If missing, say so.",
     tags: ["candidate", "evidence"],
   },
 ];
@@ -60,6 +61,7 @@ describe("reportView", () => {
     const texts = lessons.map((lesson) => lesson.text);
     expect(texts.some((text) => /Be helpful and confident/.test(text))).toBe(false);
     expect(texts.some((text) => /Failed with/.test(text))).toBe(false);
+    expect(texts.some((text) => /get_file_contents:/.test(text))).toBe(false);
     expect(texts.some((text) => /Run1 DEV/.test(text))).toBe(false);
     expect(texts.some((text) => /retrieved evidence/.test(text))).toBe(true);
     expect(texts.some((text) => /cite evidence/.test(text))).toBe(true);
