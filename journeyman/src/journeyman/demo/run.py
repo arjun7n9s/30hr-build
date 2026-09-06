@@ -26,6 +26,7 @@ from journeyman.evalset.frozen import load_frozen_eval
 from journeyman.evolve import BudgetedEvolver
 from journeyman.ingest import TraceIngest
 from journeyman.journal import JournalStore
+from journeyman.memory import MemoryStore
 from journeyman.partners.chat import ChatClient
 from journeyman.partners.mcp import GithubMcp
 from journeyman.partners.sink import NeatlogsTraceSink, emit_node, flush_sink
@@ -52,6 +53,8 @@ class SplitScore:
     turns: list[ActorTurn]
     passed: list[bool]
     split: Split = Split.DEV
+    speed_ms: float = 0.0
+    tool_calls: int = 0
 
 
 @dataclass
@@ -108,6 +111,8 @@ def score_split(
     passed: list[bool] = []
     cost = 0.0
     tokens = 0
+    speed_ms = 0.0
+    tool_calls = 0
     for case in cases:
         turn = actor.run(
             case.question,
@@ -121,6 +126,8 @@ def score_split(
         passed.append(_case_passed(case, turn))
         cost += turn.cost
         tokens += turn.tokens
+        speed_ms += turn.speed_ms
+        tool_calls += len(turn.tool_calls)
     n = len(cases)
     successes = sum(passed)
     return SplitScore(
@@ -132,6 +139,8 @@ def score_split(
         turns=turns,
         passed=passed,
         split=split,
+        speed_ms=round(speed_ms, 1),
+        tool_calls=tool_calls,
     )
 
 
@@ -185,6 +194,7 @@ def run_demo(
         challenge = load_challenge(challenge_id, challenges_path)
     work_root.mkdir(parents=True, exist_ok=True)
     journal = JournalStore(work_root / "journal")
+    memory = MemoryStore(work_root)
     skills = SkillLibrary(work_root / "skills" / "library.json")
     skills.create_if_missing(
         SkillEntry(
@@ -204,12 +214,15 @@ def run_demo(
         chat=chat,
         github=github,
         skills=skills,
+        scripts=memory.scripts,
         sink=sink,
         repo=challenge.repo,
         router=CostRouter(),
     )
     pointer = VersionPointer(active=challenge.weak_playbook.version)
     playbook = challenge.weak_playbook
+    memory.save_playbook(playbook)
+    memory.save_pointer(pointer)
 
     run1 = score_split(actor, challenge.dev, playbook, "demo-run1", split=Split.DEV)
     journal.persist_lesson(
@@ -254,7 +267,10 @@ def run_demo(
             router=actor.router,
             sink=sink,
             journal=journal,
+            scripts=memory.scripts,
         )
+        memory.save_playbook(candidate_book)
+        memory.save_pointer(pointer)
         cand_dev = score_split(actor, challenge.dev, candidate_book, "demo-cand-dev", split=Split.DEV)
         improved = cand_dev.pass_rate > run1.pass_rate
         if improved:
@@ -270,6 +286,8 @@ def run_demo(
                 playbook = candidate_book
                 promoted = True
                 run_n = cand_dev
+                memory.save_playbook(playbook)
+                memory.save_pointer(pointer)
                 redteam = attack_live(
                     actor,
                     playbook,
@@ -375,8 +393,8 @@ def render(report: DemoReport) -> str:
     neat = report.neatlogs_trace_id or "(disabled)"
     lines = [
         f"challenge {report.challenge_id} mode={report.mode}",
-        f"Run1  DEV pass={report.run1.pass_rate:.2f} cost={report.run1.cost:.4f} tokens={report.run1.tokens}",
-        f"RunN  DEV pass={report.run_n.pass_rate:.2f} cost={report.run_n.cost:.4f} tokens={report.run_n.tokens}",
+        f"Run1  DEV pass={report.run1.pass_rate:.2f} cost={report.run1.cost:.4f} tokens={report.run1.tokens} tools={report.run1.tool_calls} ms={report.run1.speed_ms:.0f}",
+        f"RunN  DEV pass={report.run_n.pass_rate:.2f} cost={report.run_n.cost:.4f} tokens={report.run_n.tokens} tools={report.run_n.tool_calls} ms={report.run_n.speed_ms:.0f}",
         f"delta pass={delta_pass:+.2f} cost={delta_cost:+.4f} {status}",
         f"holdout (sealed at promote) prior={hold_prior:.2f} candidate={hold_cand:.2f}",
         f"pointer active={report.pointer.active} candidate={report.pointer.candidate}",
@@ -395,13 +413,22 @@ def render(report: DemoReport) -> str:
     return "\n".join(lines)
 
 
+def rollback_demo(work_root: Path) -> VersionPointer:
+    return MemoryStore(work_root).rollback()
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Journeyman readonly GitHub demo loop")
     parser.add_argument("--challenge", default="frozen")
     parser.add_argument("--mode", choices=("offline", "live"), default="offline")
     parser.add_argument("--work-root", default=".")
     parser.add_argument("--challenges", default="", help="override fixtures/challenges directory")
+    parser.add_argument("--rollback", action="store_true", help="restore the prior playbook pointer")
     args = parser.parse_args(argv)
+    if args.rollback:
+        pointer = rollback_demo(Path(args.work_root))
+        print(f"rolled back active={pointer.active} prior={pointer.prior}")
+        return 0
     report = run_demo(
         args.challenge,
         work_root=Path(args.work_root),

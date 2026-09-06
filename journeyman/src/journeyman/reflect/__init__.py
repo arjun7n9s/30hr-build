@@ -8,6 +8,7 @@ from typing import Any
 from journeyman.contracts import JournalEntry, JournalKind, Playbook, PlaybookEntry, Stage
 from journeyman.ingest import NullTraceSink, TraceSink
 from journeyman.journal import JournalStore
+from journeyman.memory import ScriptEntry, ScriptStore
 from journeyman.partners.chat import ChatClient
 from journeyman.partners.sink import emit_node
 from journeyman.spend import CostRouter
@@ -51,6 +52,7 @@ class Reflect:
         router: CostRouter | None = None,
         sink: TraceSink | None = None,
         journal: JournalStore | None = None,
+        scripts: ScriptStore | None = None,
     ) -> Playbook:
         """Build a candidate playbook from DEV failure spans. Never reads hold-out."""
         sink = sink or NullTraceSink()
@@ -73,6 +75,24 @@ class Reflect:
             payload={"failures": len(failure_spans), "incoming": len(incoming), "query": query[:200]},
         )
         merged = self.merge(current, incoming, sink=sink, version=version)
+        if scripts is not None:
+            scripts.upsert(
+                ScriptEntry(
+                    id="taxonomy",
+                    name="repo.taxonomy",
+                    body=(
+                        "Labels: stack trace/500/crash/nil/OOM -> type:bug. "
+                        "crash/nil/OOM/panic -> priority:p0. typo/README/docs -> type:docs. "
+                        "add/export/feature without crash -> type:feat. "
+                        "src/api -> area:api; src/billing -> area:billing; "
+                        "src/runtime -> area:runtime; src/ui -> area:ui. "
+                        "CODEOWNERS path prefix is the logical owner. "
+                        "Duplicate = nearest existing issue title. "
+                        "Fix PR = pull whose body Closes #<issue>."
+                    ),
+                    version=version,
+                )
+            )
         if journal is not None:
             journal.persist_lesson(
                 JournalEntry(

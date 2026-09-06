@@ -15,3 +15,7 @@ venv/
 /runs/
 /ui/
 web/public/last-report.json
+.tmp-live/
+.tmp-e2e/
+journeyman/.tmp-live/
+journeyman/.tmp-e2e/

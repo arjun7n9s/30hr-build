@@ -20,6 +20,8 @@ def score_dict(score: Any | None) -> dict[str, Any] | None:
         "tokens": score.tokens,
         "split": score.split.value if hasattr(score.split, "value") else str(score.split),
         "passed": list(score.passed),
+        "speed_ms": getattr(score, "speed_ms", 0.0),
+        "tool_calls": getattr(score, "tool_calls", 0),
     }
 
 

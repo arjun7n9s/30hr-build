@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -18,6 +19,7 @@ from journeyman.contracts import (
     TraceSpan,
 )
 from journeyman.ingest import NullTraceSink, TraceSink
+from journeyman.memory import ScriptStore
 from journeyman.partners.chat import ChatClient, ChatTurn
 from journeyman.partners.github import GitHubClient
 from journeyman.partners.mcp import GithubMcp
@@ -43,6 +45,7 @@ class ActorTurn:
     escalated: bool
     events: list[TraceEventRow] = field(default_factory=list)
     answer: dict[str, Any] = field(default_factory=dict)
+    speed_ms: float = 0.0
 
 
 class Actor:
@@ -55,6 +58,7 @@ class Actor:
         chat: ChatClient | None = None,
         github: GitHubClient | GithubMcp | None = None,
         skills: SkillStore | None = None,
+        scripts: ScriptStore | None = None,
         sink: TraceSink | None = None,
         repo: str = "arjun7n9s/journeyman-fixture",
         project: str = "demo",
@@ -65,6 +69,7 @@ class Actor:
         self.chat = chat or ChatClient(offline=True)
         self.github = github or GithubMcp(offline=True)
         self.skills = skills or SkillStore()
+        self.scripts = scripts or ScriptStore()
         self.sink = sink or NullTraceSink()
         self.repo = repo
         self.project = project
@@ -82,6 +87,7 @@ class Actor:
         split: Split = Split.DEV,
         task: dict[str, Any] | None = None,
     ) -> ActorTurn:
+        started = time.perf_counter()
         trace_id = uuid.uuid4().hex[:16]
         embed_decision = self.router.embed_route()
         emit_node(
@@ -98,7 +104,9 @@ class Actor:
         hits = _playbook_hits(playbook, prompt)
         skill_hits = self.skills.find(SkillQuery(text=prompt))
         hits.extend(f"skill:{hit.skill.name}" for hit in skill_hits)
-        system = _system_prompt(playbook, skill_hits)
+        script_hits = self.scripts.find(prompt)
+        hits.extend(f"script:{item.name}" for item in script_hits)
+        system = _system_prompt(playbook, skill_hits, script_hits)
         evidence: list[str] = []
         tool_calls: list[dict[str, Any]] = []
         spans: list[TraceSpan] = []
@@ -129,11 +137,21 @@ class Actor:
             detail=first.model,
             payload={"gate_miss": first.gate_miss, "node": "Actor"},
         )
-        turn = self.chat.complete(
-            _messages(system, prompt, evidence),
-            first,
-            evidence=evidence,
-        )
+        try:
+            turn = self.chat.complete(
+                _messages(system, prompt, evidence),
+                first,
+                evidence=evidence,
+            )
+        except RuntimeError as exc:
+            turn = ChatTurn(
+                text=f"chat error: {exc}",
+                model=first.model,
+                provider="error",
+                tokens=0,
+                cost=0.0,
+                raw={"error": str(exc)[:300]},
+            )
         span, event = self._llm_span(
             prompt,
             turn,
@@ -161,11 +179,21 @@ class Actor:
         escalated = second.choice is not first.choice or second.gate_miss
         final = turn
         if escalated:
-            final = self.chat.complete(
-                _messages(system, prompt, evidence),
-                second,
-                evidence=evidence,
-            )
+            try:
+                final = self.chat.complete(
+                    _messages(system, prompt, evidence),
+                    second,
+                    evidence=evidence,
+                )
+            except RuntimeError as exc:
+                final = ChatTurn(
+                    text=f"chat error: {exc}",
+                    model=second.model,
+                    provider="error",
+                    tokens=0,
+                    cost=0.0,
+                    raw={"error": str(exc)[:300]},
+                )
             span, event = self._llm_span(
                 prompt,
                 final,
@@ -200,6 +228,7 @@ class Actor:
             escalated=escalated,
             events=events,
             answer=structured,
+            speed_ms=round((time.perf_counter() - started) * 1000, 1),
         )
 
     def call_tool(self, name: str, args: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -335,10 +364,12 @@ def _playbook_hits(playbook: Playbook, prompt: str) -> list[str]:
     return hits[:8]
 
 
-def _system_prompt(playbook: Playbook, skill_hits: list[Any]) -> str:
+def _system_prompt(playbook: Playbook, skill_hits: list[Any], script_hits: list[Any] | None = None) -> str:
     parts = [entry.text for entry in playbook.entries if entry.text.strip()]
     for hit in skill_hits:
         parts.append(f"skill {hit.skill.name}: {hit.skill.body}")
+    for script in script_hits or []:
+        parts.append(f"script {script.name}: {script.body}")
     return "\n\n".join(parts) or "Answer the user."
 
 
@@ -355,12 +386,16 @@ def _plan_tools(
     repo: str,
     task: dict[str, Any] | None = None,
 ) -> list[tuple[str, dict[str, Any]]]:
-    planned: list[tuple[str, dict[str, Any]]] = []
     github = dict((task or {}).get("github") or {})
     base = {"owner": owner, "repo": repo}
+    task_type = str((task or {}).get("type") or "")
     issue_n = github.get("issue_number")
     pr_n = github.get("pr_number")
     path = github.get("path")
+    focused = _plan_for_task(task_type, base, github)
+    if focused:
+        return _dedupe_plan(focused)
+    planned: list[tuple[str, dict[str, Any]]] = []
     issue = re.search(r"issue\s+#?(\d+)", question, re.I)
     pull = re.search(r"(?:pull request|pr)\s+#?(\d+)", question, re.I)
     if issue_n:
@@ -373,10 +408,7 @@ def _plan_tools(
         planned.append(("pull_request_read", {**base, "pull_number": int(pull.group(1))}))
     planned.append(("search_issues", {**base, "query": question}))
     planned.append(("search_code", {**base, "query": question}))
-    if task and task.get("type"):
-        planned.append(("list_issues", {**base, "state": "all"}))
-        planned.append(("list_pull_requests", {**base, "state": "all"}))
-    if re.search(r"label", question, re.I) or (task or {}).get("type") == "label":
+    if re.search(r"label", question, re.I):
         planned.append(("list_label", dict(base)))
     if path:
         planned.append(("get_file_contents", {**base, "path": path}))
@@ -386,7 +418,51 @@ def _plan_tools(
         planned.append(
             ("get_file_contents", {**base, "path": path_hit.group(1) if path_hit else "src/retry.py"})
         )
-    return planned
+    return _dedupe_plan(planned)
+
+
+def _plan_for_task(
+    task_type: str,
+    base: dict[str, Any],
+    github: dict[str, Any],
+) -> list[tuple[str, dict[str, Any]]]:
+    issue_n = github.get("issue_number")
+    path = github.get("path")
+    if task_type == "label" and issue_n:
+        return [
+            ("issue_read", {**base, "method": "get", "issue_number": int(issue_n)}),
+            ("list_label", dict(base)),
+        ]
+    if task_type == "duplicate" and issue_n:
+        return [
+            ("issue_read", {**base, "method": "get", "issue_number": int(issue_n)}),
+            ("list_issues", {**base, "state": "all"}),
+        ]
+    if task_type == "owner":
+        planned = [("get_file_contents", {**base, "path": "CODEOWNERS"})]
+        if path:
+            planned.append(("get_file_contents", {**base, "path": path}))
+        return planned
+    if task_type == "summarize":
+        return [("list_issues", {**base, "state": "open"})]
+    if task_type == "fix_pr":
+        planned = [("list_pull_requests", {**base, "state": "all"})]
+        if issue_n:
+            planned.insert(0, ("issue_read", {**base, "method": "get", "issue_number": int(issue_n)}))
+        return planned
+    return []
+
+
+def _dedupe_plan(planned: list[tuple[str, dict[str, Any]]]) -> list[tuple[str, dict[str, Any]]]:
+    seen: set[str] = set()
+    out: list[tuple[str, dict[str, Any]]] = []
+    for name, args in planned:
+        key = f"{name}:{sorted(args.items())}"
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append((name, args))
+    return out
 
 
 def _with_answer(text: str, structured: dict[str, Any]) -> str:
@@ -399,10 +475,16 @@ def _with_answer(text: str, structured: dict[str, Any]) -> str:
 def _has_payload(result: dict[str, Any]) -> bool:
     if result.get("found") is False:
         return False
-    items = result.get("items")
+    items = result.get("items") or result.get("issues") or result.get("labels")
     if isinstance(items, list):
         return bool(items)
-    return bool(result.get("body") or result.get("title") or result.get("content") or result.get("full_name"))
+    return bool(
+        result.get("body")
+        or result.get("title")
+        or result.get("content")
+        or result.get("full_name")
+        or result.get("text")
+    )
 
 
 def _evidence_text(name: str, result: dict[str, Any]) -> str:

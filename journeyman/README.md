@@ -26,7 +26,7 @@ python -m pip install -e ".[dev]"
 python -m pytest
 python -m journeyman.demo.run --challenge frozen --mode offline
 python -m journeyman.demo.run --challenge frozen --mode live
-python -m journeyman.demo.run --challenge github_triage_v1 --mode offline
+python -m journeyman.demo.run --rollback --work-root .
 ```
 
 `--mode live` uses TensorMux/OpenAI HTTP, GitHub MCP readonly against `arjun7n9s/journeyman-fixture`, and Neatlogs ingest when those keys are in local `.env`. Offline shares the same pipeline and branches only at Chat / MCP / Neatlogs IO.

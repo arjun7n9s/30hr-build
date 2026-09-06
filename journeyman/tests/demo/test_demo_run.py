@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from journeyman.contracts import Playbook, SpanKind, Split, TraceSpan
-from journeyman.demo.run import run_demo
+from journeyman.contracts import Playbook, PlaybookEntry, SpanKind, Split, TraceSpan
+from journeyman.demo.run import rollback_demo, run_demo
 from journeyman.evalset.frozen import load_frozen_eval
 from journeyman.ingest import TraceIngest
 from journeyman.journal import JournalStore
@@ -92,6 +92,12 @@ def test_frozen_demo_offline_improves(tmp_path: Path) -> None:
         assert any(split == "holdout" for _, split in report.score_log)
         assert report.redteam is not None
         assert report.redteam["n"] > 0
+        assert (tmp_path / "versions" / "pointer.json").exists()
+        assert (tmp_path / "playbooks" / f"{report.pointer.active}.json").exists()
+        assert (tmp_path / "scripts" / "library.json").exists()
+        rolled = rollback_demo(tmp_path)
+        assert rolled.active == "weak-0"
+        assert rolled.prior == report.pointer.active
 
 
 def test_promote_requires_holdout(tmp_path: Path) -> None:
@@ -164,6 +170,17 @@ def test_live_smoke_one_dev_and_neatlogs(tmp_path: Path) -> None:
     challenge = load_frozen_eval()
     case = challenge.dev[0]
     sink = NeatlogsTraceSink.from_env()
+    learned = Playbook(
+        version="cand-live",
+        empty=False,
+        entries=[
+            PlaybookEntry(
+                id="rule",
+                text="Cite issue_read evidence. Use lookup tools. If missing, say so.",
+                tags=["evidence"],
+            )
+        ],
+    )
     actor = Actor(
         chat=ChatClient(offline=False),
         github=GithubMcp(challenge.github, offline=False),
@@ -172,7 +189,7 @@ def test_live_smoke_one_dev_and_neatlogs(tmp_path: Path) -> None:
     )
     turn = actor.run(
         case.question,
-        playbook=challenge.weak_playbook,
+        playbook=learned,
         session_id="live-smoke",
         task={"type": case.task_type, "github": case.github, "id": case.id},
     )

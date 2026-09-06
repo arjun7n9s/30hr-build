@@ -107,7 +107,9 @@ flowchart TB
 5. **Eval DEV (promote signal):** Actor re-run on the 10 frozen DEV tasks with the candidate playbook.
 6. **Sealed hold-out (only if DEV improved):** Actor re-run of the 6 hold-out tasks on **prior active** and **candidate**. Promote iff candidate hold-out ≥ prior. Ingest still ignores hold-out spans.
 7. **RedTeam on LIVE** (`verify.attack_live`) only after promote. Adversarial prefixes, Actor re-run, traces to Neatlogs.
-8. Flush one nested Neatlogs tree. Write `runs/last.json`, `ui/index.html`, journal, diff. UI tabs read that artifact.
+8. Flush one nested Neatlogs tree. Persist playbook JSON, scripts, and `versions/pointer.json`. `--rollback` restores prior. Write `runs/last.json`, `ui/index.html`, journal, diff. UI tabs read that artifact.
+
+Live GitHub MCP is JSON-RPC over SSE (`initialize` + `Mcp-Session-Id` + `tools/call`). Chat/MCP HTTP retries timeouts.
 
 ## Code map
 

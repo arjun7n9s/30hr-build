@@ -23,10 +23,10 @@ python -m pip install -e ".[dev]"
 python -m pytest
 python -m journeyman.demo.run --challenge frozen --mode offline
 python -m journeyman.demo.run --challenge frozen --mode live
-python -m journeyman.demo.run --challenge github_triage_v1 --mode offline
+python -m journeyman.demo.run --rollback --work-root .
 ```
 
-`--mode live` needs `TMX_API_KEY`, `GITHUB_TOKEN`, and (for traces) `NEATLOGS_API_KEY` + `NEATLOGS_PROJECT_ID` in local `.env`. Never paste keys into chat. Offline uses MCP/chat doubles on the **same** pipeline.
+`--mode live` needs `TMX_API_KEY`, `GITHUB_TOKEN`, and (for traces) `NEATLOGS_API_KEY` in local `.env`. Never paste keys into chat. Offline uses MCP/chat doubles on the **same** pipeline. `--rollback` restores the prior version pointer after a promote.
 
 After a run, open `ui/index.html` or the Vite shell (`web/`), which reads `last-report.json`. The UI does not reimplement the loop.
 
