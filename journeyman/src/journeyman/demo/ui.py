@@ -22,28 +22,32 @@ _HTML = """<!doctype html>
   <title>Journeyman</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
-    :root { --cream:#F3E9D8; --ink:#111111; --poster:#F04E2E; }
+    :root { --bg:#09090b; --surface:#0c0c0e; --border:#27272a; --text:#fafafa; --muted:#a1a1aa; --accent:#818cf8; }
     * { box-sizing: border-box; }
-    html, body { margin: 0; background: var(--cream); color: var(--ink); font-family: "IBM Plex Sans", sans-serif; }
+    html, body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter, system-ui, sans-serif; font-size: 14px; }
     button, a, [role="button"] { cursor: pointer; }
-    .shell { max-width: 1120px; margin: 0 auto; padding: 1.4rem 1.2rem 3rem; }
-    header { display: flex; justify-content: space-between; gap: 1rem; border-bottom: 2px solid var(--ink); padding-bottom: 0.9rem; }
-    h1 { margin: 0; font-family: "IBM Plex Sans", sans-serif; font-size: 1.45rem; font-weight: 600; }
-    .kicker { margin: 0 0 0.2rem; font-family: "IBM Plex Mono", monospace; font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase; }
-    .meta { font-family: "IBM Plex Mono", monospace; font-size: 0.75rem; text-align: right; }
-    nav { display: flex; gap: 0; margin: 1rem 0; border-bottom: 2px solid var(--ink); }
-    .tab { background: transparent; border: 0; border-bottom: 4px solid transparent; padding: 0.6rem 0.85rem; font: inherit; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.78rem; }
-    .tab.active { border-bottom-color: var(--poster); }
-    .panel { border: 2px solid var(--ink); background: var(--cream); padding: 1rem; margin: 0.7rem 0; box-shadow: 7px 7px 0 var(--poster); }
-    .metric { font-size: 3rem; line-height: 0.94; font-weight: 600; }
-    pre { white-space: pre-wrap; font-family: "IBM Plex Mono", monospace; font-size: 0.82rem; }
-    a { color: var(--ink); }
-    .stamp { background: var(--ink); color: var(--cream); border: 0; padding: 0.7rem 1rem; font-weight: 600; box-shadow: 7px 7px 0 var(--poster); }
-    .stamp:hover { transform: translate(3px, 3px); background: var(--poster); color: var(--ink); }
+    .shell { max-width: 1120px; margin: 0 auto; padding: 28px 24px 64px; }
+    header { display: flex; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+    h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+    .kicker { margin: 0 0 4px; color: #71717a; font-size: 12px; font-weight: 500; }
+    .meta { color: var(--muted); font-size: 12px; text-align: right; }
+    nav { display: flex; gap: 2px; margin: 16px 0 24px; border-bottom: 1px solid var(--border); }
+    .tab { background: transparent; border: 0; border-bottom: 1px solid transparent; margin-bottom: -1px; padding: 10px 12px; color: var(--muted); font: inherit; font-size: 13px; font-weight: 500; }
+    .tab.active { color: var(--text); border-bottom-color: var(--text); }
+    .panel { border: 1px solid var(--border); background: var(--surface); border-radius: 8px; padding: 14px 16px; margin: 12px 0; }
+    .story { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    @media (max-width: 900px) { .story { grid-template-columns: 1fr; } }
+    .metric { font-size: 36px; line-height: 1.05; font-weight: 600; letter-spacing: -0.04em; }
+    pre { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--muted); }
+    a { color: var(--accent); }
+    .stamp { background: var(--text); color: var(--bg); border: 1px solid var(--text); border-radius: 6px; padding: 6px 10px; font-weight: 500; font-size: 13px; }
+    .stamp:hover { background: #e4e4e7; }
+    .seal { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); padding: 4px 10px; font-size: 12px; }
     table { width: 100%; border-collapse: collapse; }
-    th, td { text-align: left; padding: 0.35rem 0.2rem; border-bottom: 1px solid var(--ink); font-size: 0.9rem; }
+    th, td { text-align: left; padding: 7px 4px; border-bottom: 1px solid var(--border); font-size: 13px; }
+    ul { margin: 0; padding-left: 1.1rem; }
   </style>
 </head>
 <body>
@@ -114,7 +118,8 @@ _HTML = """<!doctype html>
     const pages = {
       challenge: () => `<section>
         <p class="kicker">Challenge ${R.challenge_id} · Cold → Learn → Warm</p>
-        <div class="panel"><strong>Hold-out never trained the playbook.</strong></div>
+        <p class="seal">Hold-out never trained the playbook.</p>
+        <div class="story">
         <div class="panel">
           <p class="kicker">1 · Cold</p>
           <p>Run1 DEV on a weak / empty playbook: <strong>${pct(R.run1 && R.run1.pass_rate)}</strong> pass · cost ${R.run1 && R.run1.cost} · ${(R.run1 && R.run1.tool_calls) || 0} tools · ${(R.run1 && R.run1.tokens) || 0} tok.</p>
@@ -131,6 +136,7 @@ _HTML = """<!doctype html>
           <p>Hold-out stayed sealed until promote${R.hold_candidate ? ` (prior ${pct(R.hold_prior && R.hold_prior.pass_rate)} → candidate ${pct(R.hold_candidate.pass_rate)})` : ""}.</p>
           <p>Hold-out never trained the playbook.</p>
           ${R.neatlogs_url ? `<p><a href="${R.neatlogs_url}">Open Neatlogs</a></p>` : ""}
+        </div>
         </div>
       </section>`,
       runs: () => `<section>
