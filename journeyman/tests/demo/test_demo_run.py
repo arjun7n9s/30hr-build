@@ -106,8 +106,11 @@ def test_frozen_demo_offline_improves(tmp_path: Path) -> None:
         assert rolled.active == "weak-0"
         assert rolled.prior == report.pointer.active
         challenge = load_frozen_eval()
-        p1 = {case.id for case, ok in zip(challenge.dev, report.run_n.passed, strict=True) if not ok}
-        assert {"dev-13", "dev-14"} <= p1, "hidden-rule DEV tasks fail until P1 mines them"
+        failed = {case.id for case, ok in zip(challenge.dev, report.run_n.passed, strict=True) if not ok}
+        assert not {"dev-13", "dev-14"} & failed, "P1 mining answers the undocumented DEV tasks"
+        assert any(
+            rule["evidence"]["origin"] == "mined" for rule in promoted_book["rules"]
+        ), "the promoted version carries rules mined from labeled corpus issues"
 
 
 def test_promote_requires_holdout(tmp_path: Path) -> None:

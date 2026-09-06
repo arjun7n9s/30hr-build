@@ -3,6 +3,7 @@
 Layers, cheapest to strongest:
 
 * `derive` — compile conventions the workspace already documents.
+* `mine` — induce rules from labeled corpus issues, with stats.
 * `engine` — evaluate rules against a feature record.
 * `features` — read third-party tool payloads into that feature record.
 
@@ -16,6 +17,7 @@ from journeyman.rules.derive import (
     derive_from_evidence,
     rule_id,
 )
+from journeyman.rules.mine import activate, mine
 from journeyman.rules.engine import apply_rules, holds
 from journeyman.rules.features import (
     Evidence,
@@ -35,8 +37,10 @@ __all__ = [
     "derive_codeowners",
     "derive_contributing",
     "derive_from_evidence",
+    "activate",
     "holds",
     "issue_features",
+    "mine",
     "merge_features",
     "path_features",
     "rule_id",

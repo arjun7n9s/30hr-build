@@ -33,3 +33,10 @@ python -m journeyman.demo.run --rollback --work-root .
 
 Open `ui/index.html` after a run (or the Vite shell, which reads `web/public/last-report.json`). The UI does not re-run the loop.
 
+## Derive vs mine vs promote
+
+- **Derive** reads CONTRIBUTING.md and CODEOWNERS and compiles documented `condition → outcome` lines into **ACTIVE** rules. Each rule cites a file and line. This is the honest floor: the workspace stating its own conventions.
+- **Mine** reads issues labeled `corpus:mine` (via MCP / the offline fixture) and induces **CANDIDATE** rules: a title or body token → a label, with coverage / support / confidence / lift. Rules that clear those filters become **ACTIVE**. The miner never opens `corpus/HIDDEN.md`. Hold-out issues are unlabeled and never enter this soil.
+- **Promote** is unchanged: Actor re-eval on frozen DEV is the signal; sealed hold-out runs only then (candidate vs prior); RedTeam runs after promote on LIVE.
+
+

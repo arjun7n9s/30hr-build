@@ -10,7 +10,7 @@ from journeyman.ingest import NullTraceSink, TraceSink
 from journeyman.journal import JournalStore
 from journeyman.partners.chat import ChatClient
 from journeyman.partners.sink import emit_node
-from journeyman.rules import Derivation, collect_evidence, derive_from_evidence
+from journeyman.rules import Derivation, activate, collect_evidence, derive_from_evidence, mine
 from journeyman.spend import CostRouter
 
 DERIVABLE_DOCS = ("CONTRIBUTING.md", "CODEOWNERS")
@@ -80,6 +80,10 @@ class Reflect:
             version=version,
         )
         derivation = self.derive_rules(tools, repo=repo, version=version, sink=sink)
+        mined = self.mine_rules(
+            tools, repo=repo, version=version, derived=derivation.rules, sink=sink
+        )
+        combined = list(derivation.rules) + list(mined)
         emit_node(
             sink,
             "Reflect",
@@ -89,16 +93,22 @@ class Reflect:
             payload={
                 "failures": len(failure_spans),
                 "incoming": len(incoming),
-                "rules": len(derivation.rules),
+                "derived": len(derivation.rules),
+                "mined": len(mined),
                 "unlearned": derivation.unlearned[:4],
                 "query": query[:200],
             },
         )
         merged = self.merge(
-            current, incoming, sink=sink, version=version, rules=derivation.rules
+            current, incoming, sink=sink, version=version, rules=combined
         )
         if journal is not None:
             learned = ", ".join(rule.describe() for rule in derivation.rules[:4]) or "none"
+            mined_lines = ", ".join(
+                f"{rule.id} {rule.describe()} cov={rule.stats.coverage} "
+                f"sup={rule.stats.support} lift={rule.stats.lift}"
+                for rule in mined[:6]
+            ) or "none"
             journal.persist_lesson(
                 JournalEntry(
                     id=f"reflect-{version}",
@@ -107,6 +117,7 @@ class Reflect:
                         f"Reflect merged {len(incoming)} entries from {len(failure_spans)} DEV-fail spans "
                         f"into {version}. Retrieved: {', '.join(e.id for e in retrieved) or 'none'}. "
                         f"Derived {len(derivation.rules)} rules from {repo or 'the workspace'}: {learned}. "
+                        f"Mined {len(mined)} rules from corpus soil: {mined_lines}. "
                         f"Could not compile {len(derivation.unlearned)} documented conventions."
                     ),
                     session_id="reflect",
@@ -155,6 +166,43 @@ class Reflect:
             },
         )
         return derivation
+
+    def mine_rules(
+        self,
+        tools: Any | None,
+        *,
+        repo: str,
+        version: str,
+        derived: list[Rule] | None = None,
+        sink: TraceSink | None = None,
+    ) -> list[Rule]:
+        """Induce rules from labeled corpus issues. DEV path only. Never opens HIDDEN.md."""
+        if tools is None:
+            return []
+        owner, _, name = (repo or "").partition("/")
+        try:
+            result = tools.call_tool(
+                "list_issues", {"owner": owner, "repo": name or repo, "state": "all"}
+            )
+        except Exception:
+            return []
+        if not isinstance(result, dict):
+            return []
+        evidence = collect_evidence([{"name": "list_issues", "result": result}])
+        mined = activate(mine(evidence.issues, version=version, derived=derived or []))
+        emit_node(
+            sink or NullTraceSink(),
+            "Reflect",
+            title="mine",
+            stage=Stage.PATCHED,
+            detail=f"{len(mined)} mined",
+            payload={
+                "n": len(mined),
+                "rules": [rule.describe() for rule in mined[:8]],
+                "ids": [rule.id for rule in mined[:8]],
+            },
+        )
+        return mined
 
     def retrieve(
         self,
