@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, ConfigDict
 
-from journeyman.contracts.enums import RouteChoice
+from journeyman.contracts.enums import EscalateReason, RouteChoice
 
 
 class CostRouterDecision(BaseModel):
@@ -12,3 +12,5 @@ class CostRouterDecision(BaseModel):
     reason: str
     estimated_cost: float = 0.0
     gate_miss: bool = False
+    escalate_reason: EscalateReason | None = None
+    model: str = ""

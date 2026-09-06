@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from journeyman.contracts.enums import VersionAction
+from journeyman.contracts.enums import VersionAction, VersionStatus
 
 
 def _utc_now() -> datetime:
@@ -26,6 +26,7 @@ class VersionRecord(BaseModel):
     parent: str | None = None
     created_at: datetime = Field(default_factory=_utc_now)
     notes: str = ""
+    status: VersionStatus = VersionStatus.CANDIDATE
 
 
 class VersionChange(BaseModel):

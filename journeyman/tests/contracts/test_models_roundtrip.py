@@ -10,6 +10,7 @@ from journeyman.contracts import (
     DIAGNOSIS_CONFIDENCE_THRESHOLD,
     ENUM_SNAPSHOT,
     EVAL_MAX_CASES,
+    NO_IMPROVE_LIMIT,
     REDTEAM_MAX_ATTACKS,
     REGRESSION_GATE_THRESHOLD,
     SEEN_RING_MAX,
@@ -17,6 +18,8 @@ from journeyman.contracts import (
     CostRouterDecision,
     DualPass,
     DualPassResult,
+    EscalateReason,
+    EvolveRunJournal,
     EfficiencyReport,
     EvalResult,
     FailureClass,
@@ -45,10 +48,12 @@ from journeyman.contracts import (
     SpanKind,
     Split,
     Stage,
+    StructuredSendoff,
     TraceEventRow,
     TraceSpan,
     Verdict,
     VersionAction,
+    VersionStatus,
     VersionChange,
     VersionPointer,
     VersionRecord,
@@ -82,6 +87,8 @@ def test_enum_snapshot() -> None:
         "SkillAction": SkillAction,
         "PolicyArm": PolicyArm,
         "VersionAction": VersionAction,
+        "VersionStatus": VersionStatus,
+        "EscalateReason": EscalateReason,
     }
     assert set(ENUM_SNAPSHOT) == set(lookup)
     for name, values in ENUM_SNAPSHOT.items():
@@ -101,6 +108,7 @@ def test_constants() -> None:
     assert AB_MIN_RUNS == 5
     assert AB_SIGNIFICANT_P == 0.05
     assert AB_MIN_DELTA_PP == 3.0
+    assert NO_IMPROVE_LIMIT == 3
 
 
 def test_work_item_from_span() -> None:
@@ -119,8 +127,10 @@ def test_should_stop() -> None:
     assert cycle_stop.should_stop() is True
     cost_stop = PatchBudgetCounters(max_cycles=9, used_cycles=1, max_cost_units=1.0, used_cost_units=1.0)
     assert cost_stop.should_stop() is True
-    plateau = PatchBudgetCounters(max_cycles=9, used_cycles=1, no_improve=True)
+    plateau = PatchBudgetCounters(max_cycles=9, used_cycles=1, no_improve=3)
     assert plateau.should_stop() is True
+    not_yet = PatchBudgetCounters(max_cycles=9, used_cycles=1, no_improve=2)
+    assert not_yet.should_stop() is False
 
 
 def test_model_construction_roundtrip() -> None:
@@ -196,6 +206,8 @@ def test_model_construction_roundtrip() -> None:
     pointer = VersionPointer(active="0")
     record = VersionRecord(version="0")
     change = VersionChange(action=VersionAction.HOLD, pointer=pointer)
+    sendoff = StructuredSendoff(brief="handoff", include=["verdict"], exclude=["draft"], payload={"verdict": "ok"})
+    evolve_journal = EvolveRunJournal(rounds=1, stop_reason="max_rounds")
 
     models = [
         span,
@@ -226,6 +238,8 @@ def test_model_construction_roundtrip() -> None:
         pointer,
         record,
         change,
+        sendoff,
+        evolve_journal,
         HarnessRef(id="h1", path="playbooks/index.yaml"),
     ]
     for model in models:

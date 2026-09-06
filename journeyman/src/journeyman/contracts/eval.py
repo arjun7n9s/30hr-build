@@ -42,6 +42,14 @@ class EvalResult(BaseModel):
     eval_id: str
     baseline_pass_rate: float
     candidate_pass_rate: float | None = None
+    n: int = 0
+    baseline_successes: int = 0
+    candidate_successes: int | None = None
+    wilson_low: float | None = None
+    wilson_high: float | None = None
+    welch_t: float | None = None
+    two_prop_z: float | None = None
+    cohen_d: float | None = None
 
     @property
     def delta(self) -> float | None:

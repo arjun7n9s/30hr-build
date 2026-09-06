@@ -1,0 +1,35 @@
+version: "1"
+allow:
+  - get_file_contents
+  - get_repository
+  - list_issues
+  - get_issue
+  - search_issues
+  - list_pull_requests
+  - get_pull_request
+  - search_pull_requests
+  - search_code
+  - list_labels
+  - get_label
+  - list_commits
+  - get_commit
+  - list_branches
+deny:
+  - create_issue
+  - create_pull_request
+  - push_files
+  - create_or_update_file
+  - delete_file
+  - merge_pull_request
+  - update_issue
+  - add_issue_comment
+  - create_repository
+  - delete_repository
+  - run_workflow
+  - get_secret
+  - list_secrets
+  - create_or_update_secret
+shadow:
+  name: shadow
+  policy_version: "1-shadow"
+  enabled: "true"

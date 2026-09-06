@@ -67,6 +67,18 @@ class VersionAction(str, Enum):
     HOLD = "hold"
 
 
+class VersionStatus(str, Enum):
+    CANDIDATE = "candidate"
+    ACTIVE = "active"
+    ARCHIVED = "archived"
+
+
+class EscalateReason(str, Enum):
+    QUALITY_GATE = "quality_gate"
+    EMPTY_OUTPUT = "empty_output"
+    UNAVAILABLE = "unavailable"
+
+
 ENUM_SNAPSHOT: dict[str, tuple[str, ...]] = {
     "FailureClass": ("hallucination", "prompt_drift", "tool_failure", "ok"),
     "Severity": ("critical", "high", "medium", "low"),
@@ -87,4 +99,6 @@ ENUM_SNAPSHOT: dict[str, tuple[str, ...]] = {
     "SkillAction": ("search", "write", "hit"),
     "PolicyArm": ("live", "shadow"),
     "VersionAction": ("promote", "rollback", "hold"),
+    "VersionStatus": ("candidate", "active", "archived"),
+    "EscalateReason": ("quality_gate", "empty_output", "unavailable"),
 }

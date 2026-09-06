@@ -38,3 +38,12 @@ class DualPassResult(BaseModel):
     divergence: bool = False
     tool: str
     policy_version: str
+
+
+class StructuredSendoff(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    brief: str = ""
+    include: list[str] = Field(default_factory=list)
+    exclude: list[str] = Field(default_factory=list)
+    payload: dict = Field(default_factory=dict)
