@@ -46,6 +46,102 @@ src/runtime/ runtime
 src/ui/ ui
 """
 
+CONTRIBUTING = """\
+# Contributing
+
+## Triage rules
+
+Maintainers label incoming issues with this taxonomy.
+
+- stack trace → `type:bug`
+- crash/nil/OOM → `priority:p0`
+- path `src/billing|runtime|api|ui` → matching `area:*`
+- docs/typo/README → `type:docs`
+- feature request → `type:feat`
+
+Reviewers should also check CODEOWNERS before assigning.
+"""
+
+ISSUE_BODIES: dict[str, str] = {
+    "I1": (
+        "POST /invoices with an empty body returns 500 instead of 400.\n\n"
+        "Stack trace:\n"
+        'Traceback (most recent call last):\n  File "src/api/routes.py", line 42, in create\n'
+        "ValueError: payload is empty"
+    ),
+    "I2": (
+        "Feature request: customers want to export an invoice as PDF from the billing screen.\n"
+        "Code lives in src/billing/invoice.py."
+    ),
+    "I3": "Typo in the README install section: `pip instal` should be `pip install`.",
+    "I4": (
+        "Memory climbs steadily and the process is killed after roughly two hours.\n\n"
+        "Stack trace:\n"
+        'Traceback (most recent call last):\n  File "src/runtime/worker.py", line 88, in loop\n'
+        "MemoryError: OOM while draining the queue"
+    ),
+    "I5": (
+        "Worker restarts in a crash loop.\n\n"
+        "Stack trace:\n"
+        'Traceback (most recent call last):\n  File "src/runtime/worker.py", line 31, in handle\n'
+        "AttributeError: nil context has no attribute 'deadline'"
+    ),
+    "I6": "Feature request: a dark mode toggle in settings. Code lives in src/ui/app.tsx.",
+    "I7": (
+        "The charge webhook fires twice for a single payment.\n\n"
+        "Stack trace:\n"
+        'Traceback (most recent call last):\n  File "src/billing/charge.py", line 64, in on_webhook\n'
+        "AssertionError: duplicate delivery id"
+    ),
+    "I8": "Docs request: document every env var the service reads, in the README.",
+    "I9": (
+        "Sending a request whose body is empty returns a 500 from the REST layer.\n\n"
+        "Stack trace:\n"
+        'Traceback (most recent call last):\n  File "src/api/routes.py", line 42, in create\n'
+        "ValueError: payload is empty"
+    ),
+    "I10": (
+        "Worker memory grows without bound during long runs and the OOM killer terminates it.\n\n"
+        "Stack trace:\n"
+        'Traceback (most recent call last):\n  File "src/runtime/worker.py", line 88, in loop\n'
+        "MemoryError: OOM while draining the queue"
+    ),
+    "I11": "Docs gap: the OpenAPI spec in src/api/routes.py is missing 400 response examples.",
+    "I12": (
+        "The billing cron retries and charges the customer twice.\n\n"
+        "Stack trace:\n"
+        'Traceback (most recent call last):\n  File "src/billing/charge.py", line 91, in retry\n'
+        "AssertionError: crash during replay, nil idempotency key"
+    ),
+    "I13": (
+        "Feature request: CSV export for invoices alongside the PDF export.\n"
+        "Code lives in src/billing/invoice.py."
+    ),
+    "I14": (
+        "Worker panics when the context is canceled mid-flight.\n\n"
+        "Stack trace:\n"
+        'Traceback (most recent call last):\n  File "src/runtime/worker.py", line 31, in handle\n'
+        "AttributeError: nil context has no attribute 'deadline'"
+    ),
+    "I15": "Typo in the contributing guide: `recieve` should be `receive`.",
+    "I16": (
+        "The save button overlaps the header on the settings page.\n\n"
+        "Stack trace:\n"
+        'Traceback (most recent call last):\n  File "src/ui/app.tsx", line 12, in Settings\n'
+        "TypeError: layout is undefined"
+    ),
+    "I17": (
+        "The REST handler returns 500 when the decoded JSON document is null.\n\n"
+        "Stack trace:\n"
+        'Traceback (most recent call last):\n  File "src/api/routes.py", line 57, in parse_document\n'
+        "TypeError: expected object, got null"
+    ),
+    "I18": "Docs gap: rate limit headers are not described anywhere in the README.",
+}
+"""Bodies carry the signals CONTRIBUTING describes. Labels stay off the issues:
+eval targets must be unlabeled in the workspace or the answer is readable from
+the tool response."""
+
 
 def repo_root() -> Path:
     here = Path(__file__).resolve()
@@ -102,7 +198,7 @@ def build_world(numbers: dict[str, Any] | None = None) -> dict[str, Any]:
                 "key": key,
                 "number": number,
                 "title": title,
-                "body": title,
+                "body": ISSUE_BODIES.get(key, title),
                 "labels": [],
                 "state": "open",
             }
@@ -126,6 +222,9 @@ def build_world(numbers: dict[str, Any] | None = None) -> dict[str, Any]:
         )
     files = [
         {"path": "CODEOWNERS", "content": CODEOWNERS},
+        {"path": "CONTRIBUTING.md", "content": CONTRIBUTING},
+        {"path": "src/api/routes.py", "content": "# api\n"},
+        {"path": "src/billing/invoice.py", "content": "# billing\n"},
         {"path": "src/billing/charge.py", "content": "# billing\n"},
         {"path": "src/runtime/worker.py", "content": "# runtime\n"},
         {"path": "src/ui/app.tsx", "content": "// ui\n"},

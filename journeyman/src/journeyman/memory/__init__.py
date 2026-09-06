@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from journeyman.contracts import Playbook, PlaybookEntry, VersionPointer
+from journeyman.contracts import Playbook, PlaybookEntry, Rule, VersionPointer
 
 
 class ScriptEntry:
@@ -77,10 +77,12 @@ class MemoryStore:
             return None
         data = json.loads(path.read_text(encoding="utf-8"))
         entries = [PlaybookEntry(**row) for row in data.get("entries") or []]
+        rules = [Rule(**row) for row in data.get("rules") or []]
         return Playbook(
             version=str(data.get("version") or version),
             entries=entries,
-            empty=bool(data.get("empty", len(entries) == 0)),
+            rules=rules,
+            empty=bool(data.get("empty", not entries and not rules)),
         )
 
     def save_pointer(self, pointer: VersionPointer) -> Path:

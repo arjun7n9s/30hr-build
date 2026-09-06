@@ -1,218 +1,253 @@
-"""Repo-triage answers from MCP evidence + playbook (not a second type system)."""
+"""Answer repo-triage asks from MCP evidence + learned rules.
+
+Nothing here encodes the fixture's taxonomy. Two kinds of logic are allowed:
+
+* **learned** — label and owner answers come from `Rule` objects the agent
+  derived or mined from the workspace. With an empty rule set this module
+  returns nothing for those asks, which is the honest v0 baseline.
+* **protocol** — duplicate/fix_pr/summarize use conventions that belong to
+  GitHub itself (`Closes #12`, issue numbering, title similarity), not to any
+  particular repo. Those are generic and stay in code.
+
+If you find yourself adding a repo's label name, area, or issue number to this
+file, it belongs in a rule with evidence instead.
+"""
 
 from __future__ import annotations
 
-import json
 import re
 from typing import Any
+
+from journeyman.contracts import Rule, RuleHit, RuleKind
+from journeyman.rules import apply_rules, collect_evidence, issue_features, path_features
+from journeyman.rules.features import Evidence
+
+_CLOSES = re.compile(r"\b(?:closes|closed|close|fixes|fixed|fix|resolves|resolved)\s+#(\d+)\b", re.I)
+_STOPWORDS = frozenset({"the", "and", "for", "this", "that", "with", "from", "when", "after", "into"})
+_DUPLICATE_MIN_SCORE = 0.34
+_FIX_PR_MIN_SCORE = 0.30
 
 
 def answer_task(
     task_type: str,
     question: str,
     github: dict[str, Any],
-    evidence: list[str],
+    tool_calls: list[dict[str, Any]],
     *,
-    grounded: bool,
-) -> dict[str, Any]:
-    blob = f"{question}\n" + "\n".join(evidence)
-    if not grounded:
-        return {"text": blob[:200]}
+    rules: list[Rule] | None = None,
+) -> tuple[dict[str, Any], list[RuleHit]]:
+    """Produce a structured answer plus the rules that fired producing it."""
+    evidence = collect_evidence(tool_calls)
+    rules = list(rules or [])
     if task_type == "label":
-        focus = [row for row in evidence if row.startswith("issue_read") or row.startswith("get_issue")]
-        labels = infer_labels("\n".join(focus or evidence))
-        return {"labels": labels, "text": " ".join(labels)}
-    if task_type == "duplicate":
-        dup = _duplicate(blob, github)
-        return {"duplicate_of": dup, "text": str(dup or "")}
+        return _label(github, evidence, rules, task_type)
     if task_type == "owner":
-        owner = _owner(github.get("path") or question, blob)
-        return {"owner": owner, "text": owner}
-    if task_type == "summarize":
-        keys = _mention_keys(blob)
-        return {"keys": keys, "text": " ".join(keys)}
+        return _owner(github, question, evidence, rules, task_type)
+    if task_type == "duplicate":
+        return _duplicate(github, evidence), []
     if task_type == "fix_pr":
-        pr = _fix_pr(blob, github)
-        return {"pr": pr, "text": str(pr or "")}
-    return {"text": blob[:400]}
+        return _fix_pr(github, evidence), []
+    if task_type == "summarize":
+        return _summarize(github, evidence, rules, task_type)
+    return {}, []
 
 
-def infer_labels(text: str) -> list[str]:
-    hay = text.lower()
-    labels: set[str] = set()
-    if re.search(r"typo|readme|document|docs|contributing|openapi|headers not documented", hay):
-        labels.add("type:docs")
-    elif re.search(r"\badd\b|export|toggle|feature|csv", hay) and not re.search(
-        r"500|crash|panic|oom|nil|leak", hay
-    ):
-        labels.add("type:feat")
-    else:
-        labels.add("type:bug")
-    if re.search(r"crash|nil|oom|out of memory|panic", hay):
-        labels.add("type:bug")
-        labels.add("priority:p0")
-    if re.search(r"src/api|rest handler|openapi|empty payload|null json|body is empty|api returns", hay):
-        labels.add("area:api")
-    if re.search(r"src/runtime|worker|nil context|ctx canceled", hay):
-        labels.add("area:runtime")
-    if re.search(r"src/billing|invoice|charge|webhook|cron double", hay):
-        labels.add("area:billing")
-    if re.search(r"src/ui|dark mode|settings|button misaligned", hay):
-        labels.add("area:ui")
-    return sorted(labels)
+def _label(
+    github: dict[str, Any],
+    evidence: Evidence,
+    rules: list[Rule],
+    task_type: str,
+) -> tuple[dict[str, Any], list[RuleHit]]:
+    issue = _target_issue(github, evidence)
+    if issue is None:
+        return {}, []
+    features = issue_features(issue, task_type=task_type)
+    answer, hits = apply_rules(rules, features, kind=RuleKind.LABEL)
+    labels = answer.get("labels") or []
+    if not labels:
+        # No rule covers this issue. Say so instead of guessing — an unsupported
+        # guess that happens to be right teaches reflection the wrong lesson.
+        return {"text": f"no label rule covers issue {issue.get('number')}"}, hits
+    return {"labels": labels, "text": " ".join(labels)}, hits
+
+
+def _owner(
+    github: dict[str, Any],
+    question: str,
+    evidence: Evidence,
+    rules: list[Rule],
+    task_type: str,
+) -> tuple[dict[str, Any], list[RuleHit]]:
+    path = str(github.get("path") or _path_from(question) or "")
+    if not path:
+        return {"text": "no path in the ask"}, []
+    features = path_features(path, task_type=task_type)
+    answer, hits = apply_rules(rules, features, kind=RuleKind.OWNER)
+    owner = (answer.get("owner") or [""])[0]
+    if not owner:
+        return {"text": f"no owner rule covers {path}"}, hits
+    return {"owner": owner, "text": owner}, hits
+
+
+def _duplicate(github: dict[str, Any], evidence: Evidence) -> dict[str, Any]:
+    """Nearest existing issue by title overlap. Generic, not repo-specific."""
+    target = _target_issue(github, evidence)
+    if target is None:
+        return {"text": "target issue not retrieved"}
+    target_number = _as_int(target.get("number"))
+    tokens = _issue_tokens(target)
+    if not tokens:
+        return {"text": "target issue has no text"}
+    best: dict[str, Any] | None = None
+    best_score = 0.0
+    for other in evidence.issues:
+        other_number = _as_int(other.get("number"))
+        if other_number is None or other_number == target_number:
+            continue
+        score = _overlap(tokens, _issue_tokens(other))
+        if score > best_score:
+            best, best_score = other, score
+    if best is None or best_score < _DUPLICATE_MIN_SCORE:
+        return {"text": "no duplicate above threshold"}
+    return {"duplicate_of": _as_int(best.get("number")), "text": str(best.get("title") or "")}
+
+
+def _fix_pr(github: dict[str, Any], evidence: Evidence) -> dict[str, Any]:
+    """`Closes #N` is GitHub's own linking convention; title overlap is the fallback."""
+    issue_number = _as_int(github.get("issue_number"))
+    if issue_number is not None:
+        for pull in evidence.pulls:
+            body = f"{pull.get('body') or ''}\n{pull.get('title') or ''}"
+            if any(int(match) == issue_number for match in _CLOSES.findall(body)):
+                return {"pr": _as_int(pull.get("number")), "text": str(pull.get("title") or "")}
+    target = _target_issue(github, evidence)
+    tokens = _tokens(str((target or {}).get("title") or ""))
+    if not tokens:
+        return {"text": "no linking PR found"}
+    best: dict[str, Any] | None = None
+    best_score = 0.0
+    for pull in evidence.pulls:
+        score = _overlap(tokens, _tokens(str(pull.get("title") or "")))
+        if score > best_score:
+            best, best_score = pull, score
+    if best is None or best_score < _FIX_PR_MIN_SCORE:
+        return {"text": "no linking PR found"}
+    return {"pr": _as_int(best.get("number")), "text": str(best.get("title") or "")}
+
+
+def _summarize(
+    github: dict[str, Any],
+    evidence: Evidence,
+    rules: list[Rule],
+    task_type: str,
+) -> tuple[dict[str, Any], list[RuleHit]]:
+    """Issues matching the asked-for labels, using rules where labels are absent."""
+    wanted = [str(label) for label in (github.get("labels") or [])]
+    state = str(github.get("state") or "")
+    keys: list[str] = []
+    hits: list[RuleHit] = []
+    for issue in evidence.issues:
+        if state and str(issue.get("state") or state) != state:
+            continue
+        features = issue_features(issue, task_type=task_type)
+        inferred, fired = apply_rules(rules, features, kind=RuleKind.LABEL)
+        known = {label.lower() for label in features.get("labels", [])}
+        known.update(label.lower() for label in inferred.get("labels", []))
+        if wanted and not {label.lower() for label in wanted} <= known:
+            continue
+        hits.extend(fired)
+        number = _as_int(issue.get("number"))
+        if number is not None:
+            keys.append(str(number))
+        key = str(issue.get("key") or "")
+        if key:
+            keys.append(key)
+    unique = list(dict.fromkeys(keys))
+    return {"keys": unique, "text": " ".join(unique)}, hits
 
 
 def score_frozen(expected: dict[str, Any], output: str, answer: dict[str, Any] | None = None) -> bool:
-    blob = f"{output} {answer or ''}".lower()
+    """Score one frozen case against the structured answer.
+
+    Label and owner asks are scored on the structured answer only. Scanning the
+    model's prose for the right tokens used to let a confident paragraph pass a
+    task the agent never actually decided.
+    """
+    answer = answer or {}
+    blob = f"{output} {answer}".lower()
     if expected.get("labels"):
-        want = {str(x).lower() for x in expected["labels"]}
-        got = {str(x).lower() for x in (answer or {}).get("labels") or []}
-        if got == want:
-            return True
-        return want <= set(re.findall(r"(?:area|type|priority):[\w-]+", blob))
+        want = {str(label).lower() for label in expected["labels"]}
+        got = {str(label).lower() for label in answer.get("labels") or []}
+        return got == want
     if expected.get("owner"):
-        return str(expected["owner"]).lower() in blob
+        return str(answer.get("owner") or "").strip().lower() == str(expected["owner"]).strip().lower()
     if expected.get("duplicate_of") is not None:
-        return _ref_in(blob, expected.get("duplicate_of"), expected.get("duplicate_of_key"))
+        return _ref_matches(answer.get("duplicate_of"), blob, expected["duplicate_of"], expected.get("duplicate_of_key"))
     if expected.get("pr") is not None:
-        return _ref_in(blob, expected.get("pr_number") or expected.get("pr"), expected.get("pr_key"))
-    need = expected.get("must_mention") or []
-    keys = expected.get("must_mention_keys") or []
-    extra = expected.get("must_mention_if_open") or []
-    extra_keys = expected.get("must_mention_if_open_keys") or []
-    checks = list(need) + list(keys) + list(extra) + list(extra_keys)
+        return _ref_matches(
+            answer.get("pr"),
+            blob,
+            expected.get("pr_number") or expected.get("pr"),
+            expected.get("pr_key"),
+        )
+    checks = (
+        list(expected.get("must_mention") or [])
+        + list(expected.get("must_mention_keys") or [])
+        + list(expected.get("must_mention_if_open") or [])
+        + list(expected.get("must_mention_if_open_keys") or [])
+    )
     if not checks:
         return False
-    return all(_ref_in(blob, item, item) for item in checks)
+    got = {str(key).lower() for key in answer.get("keys") or []}
+    return all(str(item).lower() in got for item in checks)
 
 
-def _duplicate(blob: str, github: dict[str, Any]) -> str | int | None:
-    issues = _issues_from_blob(blob)
-    current_n = _as_int(github.get("issue_number"))
-    current = next((row for row in issues if _as_int(row.get("number")) == current_n), None)
-    title = str((current or {}).get("title") or "")
-    if not title:
-        key = str(github.get("issue_key") or "")
-        if key == "I9" or current_n == 9:
-            return 1
-        if key == "I10" or current_n == 10:
-            return 4
-        return None
-    best: dict[str, Any] | None = None
-    best_score = 0
-    tokens = {tok for tok in re.findall(r"[a-z0-9]+", title.lower()) if len(tok) > 2}
-    for other in issues:
-        if _as_int(other.get("number")) == current_n:
-            continue
-        other_tokens = {tok for tok in re.findall(r"[a-z0-9]+", str(other.get("title") or "").lower()) if len(tok) > 2}
-        score = len(tokens & other_tokens)
-        if score > best_score:
-            best = other
-            best_score = score
-    if best is not None and best_score >= 2:
-        return best.get("number")
+def _ref_matches(got: Any, blob: str, number: Any, key: Any) -> bool:
+    if got is not None:
+        if _as_int(got) is not None and _as_int(got) == _as_int(number):
+            return True
+        if key is not None and str(got).lower() == str(key).lower():
+            return True
+        return False
+    if key is not None and str(key).lower() in blob:
+        return True
+    return number is not None and bool(re.search(rf"\b{re.escape(str(number))}\b", blob))
+
+
+def _target_issue(github: dict[str, Any], evidence: Evidence) -> dict[str, Any] | None:
+    hit = evidence.issue_by_number(github.get("issue_number"))
+    if hit is not None:
+        return hit
+    title = str(github.get("issue_title") or "")
+    if title:
+        for issue in evidence.issues:
+            if str(issue.get("title") or "").lower() == title.lower():
+                return issue
     return None
 
 
-def _owner(path: str, blob: str = "") -> str:
-    hay = f"{path}\n{blob}".replace("\\", "/")
-    for area in ("billing", "runtime", "api", "ui"):
-        if f"src/{area}/" in hay or f"src/{area}" in hay or f"/{area}/" in hay.lower() and f"src/{area}" in hay.lower():
-            return area
-    owners = re.findall(r"src/(billing|runtime|api|ui)/\s+(\S+)", hay.lower())
-    if owners:
-        return owners[0][0]
-    normalized = path.replace("\\", "/")
-    for area in ("billing", "runtime", "api", "ui"):
-        if f"src/{area}/" in normalized or f"src/{area}" in normalized:
-            return area
-    return "unknown"
+def _path_from(question: str) -> str:
+    match = re.search(r"\b((?:[\w.-]+/)+[\w.-]+\.\w+)\b", question)
+    return match.group(1) if match else ""
 
 
-def _mention_keys(blob: str) -> list[str]:
-    found = re.findall(r"\bI(\d+)\b", blob, flags=re.I)
-    nums = re.findall(r"\b(?:number['\"]?\s*[:=]\s*)(\d+)\b", blob)
-    for row in _issues_from_blob(blob):
-        n = row.get("number")
-        if n is not None:
-            nums.append(str(n))
-        key = row.get("key")
-        if key:
-            found.append(str(key).lstrip("Ii"))
-    keys = [f"I{n}" for n in found] + nums
-    return list(dict.fromkeys(keys))
+def _issue_tokens(issue: dict[str, Any]) -> set[str]:
+    """Title plus body. Two reports of the same defect rarely share a title."""
+    return _tokens(f"{issue.get('title') or ''}\n{issue.get('body') or ''}")
 
 
-def _fix_pr(blob: str, github: dict[str, Any]) -> int | None:
-    issue_n = _as_int(github.get("issue_number"))
-    for pr in _prs_from_blob(blob):
-        body = str(pr.get("body") or pr.get("title") or "")
-        if issue_n and re.search(rf"closes?\s+#?{issue_n}\b", body, re.I):
-            return _as_int(pr.get("number"))
-        if github.get("issue_key") and str(github.get("issue_key")) in body:
-            return _as_int(pr.get("number"))
-    if github.get("issue_number") == 1 or github.get("issue_key") == "I1":
-        match = re.search(r"\b(19)\b", blob)
-        if match:
-            return 19
-        return 19
-    match = re.search(r"closes?\s+#(\d+)", blob, re.I)
-    if match:
-        return int(match.group(1))
-    return None
+def _tokens(text: str) -> set[str]:
+    return {
+        token
+        for token in re.findall(r"[a-z0-9]+", text.lower())
+        if len(token) > 2 and token not in _STOPWORDS
+    }
 
 
-def _issues_from_blob(blob: str) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    for obj in _json_blobs(blob):
-        if isinstance(obj, dict) and ("title" in obj) and ("number" in obj or "issue_number" in obj):
-            if "number" not in obj and "issue_number" in obj:
-                obj = {**obj, "number": obj["issue_number"]}
-            rows.append(obj)
-        if isinstance(obj, dict):
-            for key in ("items", "issues"):
-                val = obj.get(key)
-                if isinstance(val, list):
-                    for item in val:
-                        if isinstance(item, dict) and item.get("title"):
-                            rows.append(item)
-    return rows
-
-
-def _prs_from_blob(blob: str) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    for obj in _json_blobs(blob):
-        if isinstance(obj, dict) and obj.get("number") and ("pull" in json.dumps(obj).lower() or obj.get("body")):
-            rows.append(obj)
-        if isinstance(obj, dict):
-            for key in ("items", "pulls", "pull_requests"):
-                val = obj.get(key)
-                if isinstance(val, list):
-                    for item in val:
-                        if isinstance(item, dict):
-                            rows.append(item)
-    return rows
-
-
-def _json_blobs(blob: str) -> list[Any]:
-    found: list[Any] = []
-    for match in re.finditer(r"\{.*?\}", blob, flags=re.S):
-        snippet = match.group(0)
-        if len(snippet) > 8000:
-            continue
-        try:
-            found.append(json.loads(snippet))
-        except json.JSONDecodeError:
-            continue
-    for match in re.finditer(r"\[\{.*?\}\]", blob, flags=re.S):
-        snippet = match.group(0)
-        try:
-            parsed = json.loads(snippet)
-            if isinstance(parsed, list):
-                found.extend(parsed)
-        except json.JSONDecodeError:
-            continue
-    return found
+def _overlap(left: set[str], right: set[str]) -> float:
+    if not left or not right:
+        return 0.0
+    return len(left & right) / max(len(left), len(right))
 
 
 def _as_int(value: Any) -> int | None:
@@ -220,15 +255,3 @@ def _as_int(value: Any) -> int | None:
         return int(value)
     except (TypeError, ValueError):
         return None
-
-
-def _ref_in(blob: str, number: Any, key: Any) -> bool:
-    text = blob.lower()
-    if key is not None and str(key).lower() in text:
-        return True
-    if number is None:
-        return False
-    token = str(number)
-    if token.lower().startswith(("i", "p")):
-        return token.lower() in text
-    return bool(re.search(rf"\bi{re.escape(token)}\b|\b{re.escape(token)}\b", text))

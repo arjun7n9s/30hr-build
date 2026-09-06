@@ -156,9 +156,11 @@ def _case_passed(case: ChallengeCase, turn: ActorTurn) -> bool:
     return case_passes(case.expected, turn.text)
 
 
-def _train_spans(score: SplitScore) -> list:
+def _train_spans(score: SplitScore, cases: list[ChallengeCase] | None = None) -> list:
+    """DEV spans from cases the eval scored wrong. Hold-out never reaches here."""
+    ids = [case.id for case in cases] if cases else []
     spans = []
-    for turn, ok in zip(score.turns, score.passed, strict=True):
+    for index, (turn, ok) in enumerate(zip(score.turns, score.passed, strict=True)):
         if ok:
             continue
         for span in turn.spans:
@@ -167,6 +169,8 @@ def _train_spans(score: SplitScore) -> list:
                 "held_out",
                 "held-out",
             }:
+                span.raw["eval_failed"] = True
+                span.raw["case_id"] = ids[index] if index < len(ids) else ""
                 spans.append(span)
     return spans
 
@@ -236,7 +240,7 @@ def run_demo(
     )
 
     ingest = TraceIngest(sink=sink)
-    ingest.offer(_train_spans(run1))
+    ingest.offer(_train_spans(run1, challenge.dev))
     cycle = SuperviseCycle(ingest=ingest, journal=journal)
     item = cycle.run_once()
     candidate_version = item.candidate_prompt_version if item else None
@@ -260,14 +264,15 @@ def run_demo(
         pointer = VersionPointer(active=pointer.active, candidate=candidate_version)
         candidate_book = Reflect().from_failures(
             playbook,
-            _train_spans(run1),
+            _train_spans(run1, challenge.dev),
             version=candidate_version,
             candidate_prompt=candidate_prompt,
             chat=chat,
             router=actor.router,
             sink=sink,
             journal=journal,
-            scripts=memory.scripts,
+            tools=actor,
+            repo=challenge.repo,
         )
         memory.save_playbook(candidate_book)
         memory.save_pointer(pointer)

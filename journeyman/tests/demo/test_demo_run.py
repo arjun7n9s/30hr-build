@@ -1,5 +1,6 @@
 """Offline demo runner: sealed hold-out, smoke, and frozen eval."""
 
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -7,7 +8,7 @@ import pytest
 
 from journeyman.contracts import Playbook, PlaybookEntry, SpanKind, Split, TraceSpan
 from journeyman.demo.run import rollback_demo, run_demo
-from journeyman.evalset.frozen import load_frozen_eval
+from journeyman.evalset.frozen import CODEOWNERS, CONTRIBUTING, load_frozen_eval
 from journeyman.ingest import TraceIngest
 from journeyman.journal import JournalStore
 from journeyman.partners.chat import ChatClient
@@ -93,8 +94,14 @@ def test_frozen_demo_offline_improves(tmp_path: Path) -> None:
         assert report.redteam is not None
         assert report.redteam["n"] > 0
         assert (tmp_path / "versions" / "pointer.json").exists()
-        assert (tmp_path / "playbooks" / f"{report.pointer.active}.json").exists()
-        assert (tmp_path / "scripts" / "library.json").exists()
+        book_path = tmp_path / "playbooks" / f"{report.pointer.active}.json"
+        assert book_path.exists()
+        # The promoted version must carry rules the agent derived from the
+        # workspace, each citing the line it came from. A version that only holds
+        # prose has not learned anything a reviewer can check.
+        promoted_book = json.loads(book_path.read_text(encoding="utf-8"))
+        assert promoted_book["rules"], "promoted playbook carries learned rules"
+        assert all(rule["evidence"]["refs"] for rule in promoted_book["rules"])
         rolled = rollback_demo(tmp_path)
         assert rolled.active == "weak-0"
         assert rolled.prior == report.pointer.active
@@ -134,10 +141,36 @@ def test_reflect_reads_dev_failures(tmp_path: Path) -> None:
     )
     ids = {entry.id for entry in merged.entries}
     assert "candidate-rule" in ids
-    assert "taxonomy" in ids
+    assert "taxonomy" not in ids
+    assert merged.rules == []
     assert "refund" in merged.entries[0].text or "Cite tools" in merged.entries[0].text
     core = (tmp_path / "journal" / "CORE.md").read_text(encoding="utf-8")
     assert "DEV-fail" in core
+
+
+def test_reflect_derives_rules_from_workspace_docs() -> None:
+    class _Docs:
+        def call_tool(self, name: str, args: dict) -> dict:
+            path = str(args.get("path") or "")
+            if name != "get_file_contents":
+                return {"found": False}
+            if path == "CONTRIBUTING.md":
+                return {"found": True, "path": path, "content": CONTRIBUTING}
+            if path == "CODEOWNERS":
+                return {"found": True, "path": path, "content": CODEOWNERS}
+            return {"found": False}
+
+    merged = Reflect().from_failures(
+        Playbook(version="weak-0", empty=True, entries=[]),
+        [],
+        version="cand-1",
+        tools=_Docs(),
+        repo="arjun7n9s/journeyman-fixture",
+    )
+    assert merged.rules
+    assert all(rule.evidence.refs for rule in merged.rules)
+    assert {rule.kind.value for rule in merged.rules} >= {"label", "owner"}
+    assert "taxonomy" not in {entry.id for entry in merged.entries}
 
 
 def test_live_clients_require_keys(tmp_path: Path, monkeypatch) -> None:

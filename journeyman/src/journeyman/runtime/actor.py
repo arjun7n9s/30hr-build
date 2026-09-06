@@ -11,6 +11,7 @@ from typing import Any
 
 from journeyman.contracts import (
     Playbook,
+    RuleHit,
     SkillQuery,
     SpanKind,
     Split,
@@ -30,7 +31,14 @@ from journeyman.runtime.triage import answer_task
 from journeyman.skills import SkillLibrary as SkillStore
 from journeyman.spend import CostRouter
 
-_TOOL_HINTS = ("tool", "lookup", "evidence", "cite", "search", "issue", "refuse", "do not invent")
+_STOPWORDS = frozenset(
+    {
+        "about", "all", "and", "any", "are", "can", "does", "for", "from", "get", "has",
+        "have", "how", "into", "its", "list", "not", "our", "repo", "repository", "say",
+        "that", "the", "their", "there", "these", "this", "true", "was", "were", "what",
+        "when", "where", "which", "who", "why", "with", "you", "your",
+    }
+)
 
 
 @dataclass
@@ -46,6 +54,8 @@ class ActorTurn:
     events: list[TraceEventRow] = field(default_factory=list)
     answer: dict[str, Any] = field(default_factory=dict)
     speed_ms: float = 0.0
+    rule_hits: list[RuleHit] = field(default_factory=list)
+    """Which learned rules produced this answer. Input to per-rule attribution."""
 
 
 class Actor:
@@ -127,7 +137,7 @@ class Actor:
                 events.append(event)
                 denied = bool(result.get("denied"))
                 tool_calls.append({"name": name, "args": args, "result": result, "denied": denied})
-                if not denied and _has_payload(result):
+                if not denied and _has_payload(result) and _relevant(prompt, result):
                     evidence.append(_evidence_text(name, result))
         first = self.router.decide(prompt)
         emit_node(
@@ -209,13 +219,17 @@ class Actor:
             tokens += final.tokens
             cost += final.cost
         structured: dict[str, Any] = {}
-        if task and not playbook.empty:
-            structured = answer_task(
+        rule_hits: list[RuleHit] = []
+        if task:
+            # Runs at every version, including v0. With an empty rule set this
+            # returns "no rule covers it" rather than a guess, so the baseline is
+            # a real answer attempt instead of a disabled code path.
+            structured, rule_hits = answer_task(
                 str(task.get("type") or ""),
                 prompt,
                 dict(task.get("github") or {}),
-                evidence,
-                grounded=True,
+                tool_calls,
+                rules=playbook.rules,
             )
         return ActorTurn(
             text=_with_answer(final.text, structured),
@@ -229,6 +243,7 @@ class Actor:
             events=events,
             answer=structured,
             speed_ms=round((time.perf_counter() - started) * 1000, 1),
+            rule_hits=rule_hits,
         )
 
     def call_tool(self, name: str, args: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -348,10 +363,16 @@ class Actor:
 
 
 def _should_use_tools(playbook: Playbook) -> bool:
-    if playbook.empty:
-        return False
-    blob = " ".join(entry.text for entry in playbook.entries).lower()
-    return any(hint in blob for hint in _TOOL_HINTS)
+    """Always. Tool access is granted, not learned.
+
+    This used to return False for an empty playbook, which meant the v0 baseline
+    was an agent forbidden from touching the third-party app — so every later
+    gain was really just "tools got switched on". What the agent learns is which
+    tools to reach for and in what order, and that shows up in the tool plan and
+    in cost, not in whether it may call anything at all.
+    """
+    del playbook
+    return True
 
 
 def _playbook_hits(playbook: Playbook, prompt: str) -> list[str]:
@@ -386,71 +407,50 @@ def _plan_tools(
     repo: str,
     task: dict[str, Any] | None = None,
 ) -> list[tuple[str, dict[str, Any]]]:
+    """One evidence plan for every ask, plus whatever the ask points at.
+
+    This deliberately does not branch on `task["type"]`. A per-type tool list is
+    the eval's shape written into Python: it makes the agent look competent on
+    the five fixture task types and blind everywhere else. Instead every run
+    fetches the same repo context and adds reads for the specific issue, pull
+    request, or file the question names.
+    """
     github = dict((task or {}).get("github") or {})
     base = {"owner": owner, "repo": repo}
-    task_type = str((task or {}).get("type") or "")
-    issue_n = github.get("issue_number")
-    pr_n = github.get("pr_number")
-    path = github.get("path")
-    focused = _plan_for_task(task_type, base, github)
-    if focused:
-        return _dedupe_plan(focused)
     planned: list[tuple[str, dict[str, Any]]] = []
-    issue = re.search(r"issue\s+#?(\d+)", question, re.I)
-    pull = re.search(r"(?:pull request|pr)\s+#?(\d+)", question, re.I)
-    if issue_n:
-        planned.append(("issue_read", {**base, "method": "get", "issue_number": int(issue_n)}))
-    elif issue:
-        planned.append(("issue_read", {**base, "method": "get", "issue_number": int(issue.group(1))}))
-    if pr_n:
-        planned.append(("pull_request_read", {**base, "pull_number": int(pr_n)}))
-    elif pull:
-        planned.append(("pull_request_read", {**base, "pull_number": int(pull.group(1))}))
-    planned.append(("search_issues", {**base, "query": question}))
-    planned.append(("search_code", {**base, "query": question}))
-    if re.search(r"label", question, re.I):
-        planned.append(("list_label", dict(base)))
+    issue_n = _first_int(github.get("issue_number"), _match(r"issue\s+#?(\d+)", question))
+    if issue_n is not None:
+        planned.append(("issue_read", {**base, "method": "get", "issue_number": issue_n}))
+    pr_n = _first_int(github.get("pr_number"), _match(r"(?:pull request|pr)\s+#?(\d+)", question))
+    if pr_n is not None:
+        planned.append(("pull_request_read", {**base, "pull_number": pr_n}))
+    path = str(github.get("path") or _match(r"([\w./-]+\.\w+)", question) or "")
     if path:
         planned.append(("get_file_contents", {**base, "path": path}))
-        planned.append(("get_file_contents", {**base, "path": "CODEOWNERS"}))
-    path_hit = re.search(r"([\w./-]+\.py)", question)
-    if path_hit or re.search(r"retry", question, re.I):
-        planned.append(
-            ("get_file_contents", {**base, "path": path_hit.group(1) if path_hit else "src/retry.py"})
-        )
+    planned.extend(
+        [
+            ("get_file_contents", {**base, "path": "CONTRIBUTING.md"}),
+            ("get_file_contents", {**base, "path": "CODEOWNERS"}),
+            ("list_issues", {**base, "state": "all"}),
+            ("list_pull_requests", {**base, "state": "all"}),
+            ("list_label", dict(base)),
+        ]
+    )
     return _dedupe_plan(planned)
 
 
-def _plan_for_task(
-    task_type: str,
-    base: dict[str, Any],
-    github: dict[str, Any],
-) -> list[tuple[str, dict[str, Any]]]:
-    issue_n = github.get("issue_number")
-    path = github.get("path")
-    if task_type == "label" and issue_n:
-        return [
-            ("issue_read", {**base, "method": "get", "issue_number": int(issue_n)}),
-            ("list_label", dict(base)),
-        ]
-    if task_type == "duplicate" and issue_n:
-        return [
-            ("issue_read", {**base, "method": "get", "issue_number": int(issue_n)}),
-            ("list_issues", {**base, "state": "all"}),
-        ]
-    if task_type == "owner":
-        planned = [("get_file_contents", {**base, "path": "CODEOWNERS"})]
-        if path:
-            planned.append(("get_file_contents", {**base, "path": path}))
-        return planned
-    if task_type == "summarize":
-        return [("list_issues", {**base, "state": "open"})]
-    if task_type == "fix_pr":
-        planned = [("list_pull_requests", {**base, "state": "all"})]
-        if issue_n:
-            planned.insert(0, ("issue_read", {**base, "method": "get", "issue_number": int(issue_n)}))
-        return planned
-    return []
+def _match(pattern: str, text: str) -> str:
+    hit = re.search(pattern, text, re.I)
+    return hit.group(1) if hit else ""
+
+
+def _first_int(*values: Any) -> int | None:
+    for value in values:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            continue
+    return None
 
 
 def _dedupe_plan(planned: list[tuple[str, dict[str, Any]]]) -> list[tuple[str, dict[str, Any]]]:
@@ -489,6 +489,40 @@ def _has_payload(result: dict[str, Any]) -> bool:
 
 def _evidence_text(name: str, result: dict[str, Any]) -> str:
     return f"{name}: {result}"
+
+
+def _relevant(question: str, result: dict[str, Any]) -> bool:
+    """Keep a fetched result only if it shares a content word with the ask.
+
+    The plan fetches the same repo context on every run, so without this filter
+    an ask the repo has nothing to say about would still come back "grounded" in
+    whatever issues happened to exist, and the agent would never answer "no
+    evidence". Relevance is judged on retrieved values, not on task type.
+    """
+    asked = _content_tokens(question)
+    if not asked:
+        return True
+    return bool(asked & _content_tokens(_value_blob(result)))
+
+
+def _value_blob(value: Any, depth: int = 0) -> str:
+    if depth > 4:
+        return ""
+    if isinstance(value, dict):
+        return " ".join(_value_blob(item, depth + 1) for item in value.values())
+    if isinstance(value, (list, tuple)):
+        return " ".join(_value_blob(item, depth + 1) for item in value)
+    if isinstance(value, bool) or value is None:
+        return ""
+    return str(value)
+
+
+def _content_tokens(text: str) -> set[str]:
+    return {
+        token
+        for token in re.findall(r"[a-z0-9_]+", text.lower())
+        if token not in _STOPWORDS and (len(token) > 2 or token.isdigit())
+    }
 
 
 def _grounding_score(output: str, evidence: list[str]) -> float:

@@ -5,13 +5,16 @@ from __future__ import annotations
 import math
 from typing import Any
 
-from journeyman.contracts import JournalEntry, JournalKind, Playbook, PlaybookEntry, Stage
+from journeyman.contracts import JournalEntry, JournalKind, Playbook, PlaybookEntry, Rule, Stage
 from journeyman.ingest import NullTraceSink, TraceSink
 from journeyman.journal import JournalStore
-from journeyman.memory import ScriptEntry, ScriptStore
 from journeyman.partners.chat import ChatClient
 from journeyman.partners.sink import emit_node
+from journeyman.rules import Derivation, collect_evidence, derive_from_evidence
 from journeyman.spend import CostRouter
+
+DERIVABLE_DOCS = ("CONTRIBUTING.md", "CODEOWNERS")
+"""Files a workspace uses to state its own conventions. Read-only, policy-allowed."""
 
 
 class Reflect:
@@ -22,6 +25,7 @@ class Reflect:
         *,
         sink: TraceSink | None = None,
         version: str | None = None,
+        rules: list[Rule] | None = None,
     ) -> Playbook:
         by_id = {entry.id: entry for entry in current.entries}
         superseded: list[str] = []
@@ -29,8 +33,16 @@ class Reflect:
             if entry.id in by_id:
                 superseded.append(entry.id)
             by_id[entry.id] = entry
+        rules_by_id = {rule.id: rule for rule in current.rules}
+        for rule in rules or []:
+            rules_by_id[rule.id] = rule
         next_version = version or (incoming[0].version if incoming else current.version)
-        merged = Playbook(version=next_version, entries=list(by_id.values()), empty=len(by_id) == 0)
+        merged = Playbook(
+            version=next_version,
+            entries=list(by_id.values()),
+            rules=list(rules_by_id.values()),
+            empty=len(by_id) == 0 and not rules_by_id,
+        )
         emit_node(
             sink or NullTraceSink(),
             "Reflect",
@@ -52,7 +64,8 @@ class Reflect:
         router: CostRouter | None = None,
         sink: TraceSink | None = None,
         journal: JournalStore | None = None,
-        scripts: ScriptStore | None = None,
+        tools: Any | None = None,
+        repo: str = "",
     ) -> Playbook:
         """Build a candidate playbook from DEV failure spans. Never reads hold-out."""
         sink = sink or NullTraceSink()
@@ -66,47 +79,82 @@ class Reflect:
             retrieved=retrieved,
             version=version,
         )
+        derivation = self.derive_rules(tools, repo=repo, version=version, sink=sink)
         emit_node(
             sink,
             "Reflect",
             title="from_failures",
             stage=Stage.PATCHED,
             detail=version,
-            payload={"failures": len(failure_spans), "incoming": len(incoming), "query": query[:200]},
+            payload={
+                "failures": len(failure_spans),
+                "incoming": len(incoming),
+                "rules": len(derivation.rules),
+                "unlearned": derivation.unlearned[:4],
+                "query": query[:200],
+            },
         )
-        merged = self.merge(current, incoming, sink=sink, version=version)
-        if scripts is not None:
-            scripts.upsert(
-                ScriptEntry(
-                    id="taxonomy",
-                    name="repo.taxonomy",
-                    body=(
-                        "Labels: stack trace/500/crash/nil/OOM -> type:bug. "
-                        "crash/nil/OOM/panic -> priority:p0. typo/README/docs -> type:docs. "
-                        "add/export/feature without crash -> type:feat. "
-                        "src/api -> area:api; src/billing -> area:billing; "
-                        "src/runtime -> area:runtime; src/ui -> area:ui. "
-                        "CODEOWNERS path prefix is the logical owner. "
-                        "Duplicate = nearest existing issue title. "
-                        "Fix PR = pull whose body Closes #<issue>."
-                    ),
-                    version=version,
-                )
-            )
+        merged = self.merge(
+            current, incoming, sink=sink, version=version, rules=derivation.rules
+        )
         if journal is not None:
+            learned = ", ".join(rule.describe() for rule in derivation.rules[:4]) or "none"
             journal.persist_lesson(
                 JournalEntry(
                     id=f"reflect-{version}",
                     kind=JournalKind.LESSON,
                     text=(
                         f"Reflect merged {len(incoming)} entries from {len(failure_spans)} DEV-fail spans "
-                        f"into {version}. Retrieved: {', '.join(e.id for e in retrieved) or 'none'}."
+                        f"into {version}. Retrieved: {', '.join(e.id for e in retrieved) or 'none'}. "
+                        f"Derived {len(derivation.rules)} rules from {repo or 'the workspace'}: {learned}. "
+                        f"Could not compile {len(derivation.unlearned)} documented conventions."
                     ),
                     session_id="reflect",
                     version=version,
                 )
             )
         return merged
+
+    def derive_rules(
+        self,
+        tools: Any | None,
+        *,
+        repo: str,
+        version: str,
+        sink: TraceSink | None = None,
+    ) -> Derivation:
+        """Read the workspace's own convention files and compile them into rules.
+
+        Reflection is allowed to investigate, not just to summarise: it spends
+        real read-only tool calls here, and every fetch is traced like any other
+        hop. Rules carry the file and line they came from.
+        """
+        if tools is None:
+            return Derivation()
+        owner, _, name = (repo or "").partition("/")
+        calls: list[dict[str, Any]] = []
+        for path in DERIVABLE_DOCS:
+            args = {"owner": owner, "repo": name or repo, "path": path}
+            try:
+                result = tools.call_tool("get_file_contents", args)
+            except Exception:  # a missing doc must not abort reflection
+                continue
+            if isinstance(result, dict):
+                calls.append({"name": "get_file_contents", "result": {**result, "path": path}})
+        derivation = derive_from_evidence(collect_evidence(calls), version=version)
+        emit_node(
+            sink or NullTraceSink(),
+            "Reflect",
+            title="derive",
+            stage=Stage.PATCHED,
+            detail=f"{len(derivation.rules)} rules",
+            payload={
+                "sources": list(DERIVABLE_DOCS),
+                "rules": [rule.describe() for rule in derivation.rules[:8]],
+                "unlearned": derivation.unlearned[:4],
+            },
+        )
+        return derivation
 
     def retrieve(
         self,
@@ -164,18 +212,13 @@ def _entries_from_failures(
     evidence = candidate_prompt.strip() or (
         "Answer only from retrieved GitHub evidence. Cite the tool. If evidence is missing, say so."
     )
-    taxonomy = (
-        "Infer area:/type:/priority: from retrieved issue titles and bodies. "
-        "Use issue_read, list_issues, list_label, search_code. Never invent labels."
-    )
     if lessons:
         evidence = evidence + "\n" + "\n".join(lessons[:6])
     incoming = [
         PlaybookEntry(id="candidate-rule", text=evidence, tags=["candidate", "evidence"], version=version),
-        PlaybookEntry(id="taxonomy", text=taxonomy, tags=["taxonomy"], version=version),
     ]
     for entry in retrieved:
-        if entry.id in {"candidate-rule", "taxonomy"}:
+        if entry.id == "candidate-rule":
             continue
         incoming.append(
             PlaybookEntry(

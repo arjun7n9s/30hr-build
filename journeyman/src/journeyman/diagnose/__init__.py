@@ -35,7 +35,14 @@ class FailureJudge:
         confidence = 0.4
         rationale = "answer looks grounded"
         expected = "stay within tool results"
-        if _looks_like_persona_break(output):
+        if span.raw.get("eval_failed"):
+            # A scored miss is ground truth. Prefer it over any text heuristic:
+            # word-spotting the output only ever guessed at what the eval knows.
+            failure = FailureClass.TOOL_FAILURE if empty_tool else FailureClass.HALLUCINATION
+            confidence = 0.9
+            rationale = f"eval scored {span.raw.get('case_id') or 'this case'} wrong"
+            expected = "match the expected fields for this task"
+        elif _looks_like_persona_break(output):
             failure = FailureClass.PROMPT_DRIFT
             confidence = 0.86
             rationale = "output abandoned the instructed role"
