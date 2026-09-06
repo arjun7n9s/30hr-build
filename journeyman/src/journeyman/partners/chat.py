@@ -40,12 +40,20 @@ class ChatTurn:
 class ChatClient:
     def __init__(self, *, offline: bool = True) -> None:
         load_local_env()
-        self.offline = offline or not (_cheap_key() or _escalate_key())
+        self.offline = offline
+        if not offline and not _cheap_key():
+            raise RuntimeError("live mode needs TMX_API_KEY in local .env")
         self.cheap_model = os.environ.get("TENSOR_MUX_MODEL", CHEAP_MODEL)
         self.escalate_model = os.environ.get("OPENAI_ESCALATE_MODEL", ESCALATE_MODEL)
         self.embed_model = os.environ.get("OPENAI_EMBEDDING_MODEL", EMBED_MODEL)
-        self.cheap_base = os.environ.get("CHEAP_BASE_URL", CHEAP_BASE_URL)
-        self.escalate_base = os.environ.get("ESCALATE_BASE_URL", ESCALATE_BASE_URL)
+        self.cheap_base = (
+            os.environ.get("TENSOR_MUX_BASE_URL")
+            or os.environ.get("CHEAP_BASE_URL")
+            or CHEAP_BASE_URL
+        )
+        self.escalate_base = os.environ.get("OPENAI_BASE_URL") or os.environ.get(
+            "ESCALATE_BASE_URL", ESCALATE_BASE_URL
+        )
 
     def complete(
         self,
@@ -60,18 +68,16 @@ class ChatClient:
 
     def embed(self, text: str) -> ChatTurn:
         """Embeddings stay on the escalate path, never the cheap chat hop."""
-        if self.offline:
+        key = _escalate_key()
+        if self.offline or not key:
             return ChatTurn(
                 text="",
                 model=self.embed_model,
                 provider="embed",
                 tokens=len(text.split()),
                 cost=0.0,
-                raw={"offline": True, "dim": 8},
+                raw={"offline": True, "dim": 8, "keyword_fallback": not bool(key)},
             )
-        key = _escalate_key()
-        if not key:
-            raise RuntimeError("embeddings key missing from local .env")
         payload = post_json(
             self.escalate_base.rstrip("/") + "/embeddings",
             {"model": self.embed_model, "input": text},

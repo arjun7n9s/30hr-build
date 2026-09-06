@@ -112,7 +112,15 @@ class CostRouter:
 
 
 def load_local_env(path: Path | None = None) -> None:
-    _load_dotenv(path or Path(".env"))
+    if path:
+        _load_dotenv(path)
+        return
+    cursor = Path.cwd().resolve()
+    for _ in range(5):
+        _load_dotenv(cursor / ".env")
+        if cursor.parent == cursor:
+            break
+        cursor = cursor.parent
 
 
 def _load_dotenv(path: Path) -> None:

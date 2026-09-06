@@ -1,10 +1,11 @@
-"""CLI: Run1 DEV only → supervise cycle → sealed hold-out at promote → RunN."""
+"""CLI: one pipeline, --mode offline|live. Promote = Actor re-eval on frozen JSON."""
 
 from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from journeyman.contracts import (
     EvalResult,
@@ -12,7 +13,6 @@ from journeyman.contracts import (
     JournalKind,
     PatchBudgetCounters,
     Playbook,
-    PlaybookEntry,
     SkillEntry,
     SpanKind,
     Split,
@@ -20,21 +20,23 @@ from journeyman.contracts import (
     VersionPointer,
     VersionStatus,
 )
+from journeyman.demo.artifacts import write_artifacts
 from journeyman.demo.challenge import ChallengeCase, challenges_dir, load_challenge
 from journeyman.evalset.frozen import load_frozen_eval
-from journeyman.partners.mcp import GithubMcp
-from journeyman.runtime.triage import score_frozen
 from journeyman.evolve import BudgetedEvolver
 from journeyman.ingest import TraceIngest
 from journeyman.journal import JournalStore
 from journeyman.partners.chat import ChatClient
-from journeyman.partners.sink import NeatlogsTraceSink, emit_node
+from journeyman.partners.mcp import GithubMcp
+from journeyman.partners.sink import NeatlogsTraceSink, emit_node, flush_sink
 from journeyman.reflect import Reflect
 from journeyman.runtime import SuperviseCycle
 from journeyman.runtime.actor import Actor, ActorTurn
+from journeyman.runtime.triage import score_frozen
 from journeyman.skills import SkillLibrary
+from journeyman.spend import CostRouter
 from journeyman.stats.ab import fill_eval_result
-from journeyman.verify import AdversarialProbe
+from journeyman.verify import attack_live
 
 # Test hook: every score_split call records (session_id, split).
 SCORE_LOG: list[tuple[str, str]] = []
@@ -66,6 +68,17 @@ class DemoReport:
     diff_path: Path
     candidate_version: str | None
     score_log: list[tuple[str, str]] = field(default_factory=list)
+    mode: str = "offline"
+    neatlogs_trace_id: str | None = None
+    neatlogs_url: str = ""
+    report_path: Path | None = None
+    ui_path: Path | None = None
+    journal_text: str = ""
+    diff_text: str = ""
+    playbook_entries: list[dict[str, Any]] = field(default_factory=list)
+    redteam: dict[str, Any] | None = None
+    children: list[dict[str, Any]] = field(default_factory=list)
+    repo: str = "arjun7n9s/journeyman-fixture"
 
 
 def case_passes(expected: str, output: str) -> bool:
@@ -87,6 +100,7 @@ def score_split(
     *,
     split: Split = Split.DEV,
 ) -> SplitScore:
+    """Actor re-run on frozen JSON. This is the promote signal, not LiveScorer."""
     SCORE_LOG.append((session_id, split.value))
     node = "Eval Hold" if split is Split.HOLDOUT else "Eval DEV"
     emit_node(actor.sink, node, title=session_id, payload={"n": len(cases), "split": split.value})
@@ -133,21 +147,6 @@ def _case_passed(case: ChallengeCase, turn: ActorTurn) -> bool:
     return case_passes(case.expected, turn.text)
 
 
-def playbook_from_candidate(item_prompt: str, version: str) -> Playbook:
-    return Playbook(
-        version=version,
-        empty=False,
-        entries=[
-            PlaybookEntry(
-                id="candidate-rule",
-                text=item_prompt,
-                tags=["candidate", "evidence"],
-                version=version,
-            )
-        ],
-    )
-
-
 def _train_spans(score: SplitScore) -> list:
     spans = []
     for turn, ok in zip(score.turns, score.passed, strict=True):
@@ -163,14 +162,23 @@ def _train_spans(score: SplitScore) -> list:
     return spans
 
 
+def _io_clients(challenge: Any, *, live: bool) -> tuple[ChatClient, GithubMcp]:
+    """Branch only at Chat / GitHub MCP IO. Pipeline above this is shared."""
+    return ChatClient(offline=not live), GithubMcp(challenge.github, offline=not live)
+
+
 def run_demo(
     challenge_id: str,
     *,
     work_root: Path,
     challenges_path: Path | None = None,
-    offline: bool = True,
+    offline: bool | None = None,
+    mode: str = "offline",
 ) -> DemoReport:
     SCORE_LOG.clear()
+    if offline is not None:
+        mode = "offline" if offline else "live"
+    live = mode == "live"
     if challenge_id in {"frozen", "github_triage_frozen", ""}:
         challenge = load_frozen_eval()
     else:
@@ -182,20 +190,23 @@ def run_demo(
         SkillEntry(
             id="readonly-lookup",
             name="repo.readonly_lookup",
-            body="Use list_issues, get_issue, search_code, get_file_contents. Never write.",
+            body="Use issue_read, list_issues, list_label, search_code, get_file_contents. Never write.",
             version="1",
             tags=["github", "readonly"],
         )
     )
     sink = NeatlogsTraceSink.from_env()
-    github = GithubMcp(challenge.github, offline=offline)
-    chat = ChatClient(offline=offline)
+    if hasattr(sink, "session_id"):
+        sink.session_id = f"journeyman-{mode}-{challenge.id}"
+        sink.workflow_name = f"journeyman-{challenge.id}"
+    chat, github = _io_clients(challenge, live=live)
     actor = Actor(
         chat=chat,
         github=github,
         skills=skills,
         sink=sink,
         repo=challenge.repo,
+        router=CostRouter(),
     )
     pointer = VersionPointer(active=challenge.weak_playbook.version)
     playbook = challenge.weak_playbook
@@ -219,7 +230,8 @@ def run_demo(
     candidate_prompt = item.candidate_prompt if item else None
     diff_path = work_root / "journal" / "candidate.diff"
     diff_path.parent.mkdir(parents=True, exist_ok=True)
-    diff_path.write_text((item.prompt_diff if item and item.prompt_diff else ""), encoding="utf-8")
+    diff_text = item.prompt_diff if item and item.prompt_diff else ""
+    diff_path.write_text(diff_text, encoding="utf-8")
 
     BudgetedEvolver().run(
         PatchBudgetCounters(max_cycles=2),
@@ -230,27 +242,22 @@ def run_demo(
     run_n = run1
     hold_prior: SplitScore | None = None
     hold_candidate: SplitScore | None = None
+    redteam: dict[str, Any] | None = None
     if candidate_prompt and candidate_version:
         pointer = VersionPointer(active=pointer.active, candidate=candidate_version)
-        incoming = [
-            PlaybookEntry(
-                id="candidate-rule",
-                text=candidate_prompt,
-                tags=["candidate", "evidence"],
-                version=candidate_version,
-            ),
-            PlaybookEntry(
-                id="taxonomy",
-                text="Infer area:/type:/priority: from retrieved issue titles. Cite tools. If missing, say so.",
-                tags=["taxonomy"],
-                version=candidate_version,
-            ),
-        ]
-        candidate_book = Reflect().merge(playbook, incoming, sink=sink, version=candidate_version)
+        candidate_book = Reflect().from_failures(
+            playbook,
+            _train_spans(run1),
+            version=candidate_version,
+            candidate_prompt=candidate_prompt,
+            chat=chat,
+            router=actor.router,
+            sink=sink,
+            journal=journal,
+        )
         cand_dev = score_split(actor, challenge.dev, candidate_book, "demo-cand-dev", split=Split.DEV)
         improved = cand_dev.pass_rate > run1.pass_rate
         if improved:
-            # Sealed hold-out: scored only at promote, never offered to ingest.
             hold_prior = score_split(
                 actor, challenge.held_out, playbook, "demo-hold-prior", split=Split.HOLDOUT
             )
@@ -263,16 +270,15 @@ def run_demo(
                 playbook = candidate_book
                 promoted = True
                 run_n = cand_dev
+                redteam = attack_live(
+                    actor,
+                    playbook,
+                    challenge.dev,
+                    sink=sink,
+                    pass_fn=_case_passed,
+                )
                 if item is not None:
-                    AdversarialProbe().attack(item)
-                    emit_node(
-                        sink,
-                        "RedTeam",
-                        title="live",
-                        stage=Stage.RED_TEAMED,
-                        work_item_id=item.work_item_id,
-                        payload={"version": candidate_version},
-                    )
+                    item.stage = Stage.RED_TEAMED
                 journal.persist_lesson(
                     JournalEntry(
                         id="lesson-promote",
@@ -319,7 +325,21 @@ def run_demo(
         candidate_successes=run_n.successes,
     )
     fill_eval_result(eval_result)
-    return DemoReport(
+    trace_id = flush_sink(sink)
+    neatlogs_url = ""
+    if hasattr(sink, "cockpit_url"):
+        neatlogs_url = sink.cockpit_url()
+    elif trace_id:
+        neatlogs_url = f"https://app.neatlogs.com/?trace_id={trace_id}"
+    children = []
+    payload = getattr(sink, "last_payload", None)
+    if isinstance(payload, dict):
+        children = list(payload.get("children") or [])
+    journal_text = ""
+    core = journal.root / "CORE.md"
+    if core.exists():
+        journal_text = core.read_text(encoding="utf-8")
+    report = DemoReport(
         challenge_id=challenge.id,
         run1=run1,
         run_n=run_n,
@@ -332,7 +352,18 @@ def run_demo(
         diff_path=diff_path,
         candidate_version=candidate_version,
         score_log=list(SCORE_LOG),
+        mode=mode,
+        neatlogs_trace_id=trace_id or getattr(sink, "last_trace_id", None),
+        neatlogs_url=neatlogs_url,
+        journal_text=journal_text,
+        diff_text=diff_text,
+        playbook_entries=[entry.model_dump() for entry in playbook.entries],
+        redteam=redteam,
+        children=children,
+        repo=challenge.repo,
     )
+    write_artifacts(report, work_root)
+    return report
 
 
 def render(report: DemoReport) -> str:
@@ -341,8 +372,9 @@ def render(report: DemoReport) -> str:
     status = "PROMOTED" if report.promoted else "HELD"
     hold_prior = report.hold_prior.pass_rate if report.hold_prior else float("nan")
     hold_cand = report.hold_candidate.pass_rate if report.hold_candidate else float("nan")
+    neat = report.neatlogs_trace_id or "(disabled)"
     lines = [
-        f"challenge {report.challenge_id}",
+        f"challenge {report.challenge_id} mode={report.mode}",
         f"Run1  DEV pass={report.run1.pass_rate:.2f} cost={report.run1.cost:.4f} tokens={report.run1.tokens}",
         f"RunN  DEV pass={report.run_n.pass_rate:.2f} cost={report.run_n.cost:.4f} tokens={report.run_n.tokens}",
         f"delta pass={delta_pass:+.2f} cost={delta_cost:+.4f} {status}",
@@ -350,15 +382,23 @@ def render(report: DemoReport) -> str:
         f"pointer active={report.pointer.active} candidate={report.pointer.candidate}",
         f"eval wilson=({report.eval_result.wilson_low}, {report.eval_result.wilson_high})",
         f"candidate version={report.candidate_version or ''} status={VersionStatus.CANDIDATE.value} until promote",
+        f"neatlogs trace_id={neat} {report.neatlogs_url}",
         f"journal {report.journal_path}",
         f"candidate diff {report.diff_path}",
+        f"report json {report.report_path}",
+        f"ui {report.ui_path}",
     ]
+    if report.redteam:
+        lines.append(
+            f"redteam live pass={report.redteam['pass_rate']:.2f} n={report.redteam['n']}"
+        )
     return "\n".join(lines)
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Journeyman readonly GitHub demo loop")
     parser.add_argument("--challenge", default="frozen")
+    parser.add_argument("--mode", choices=("offline", "live"), default="offline")
     parser.add_argument("--work-root", default=".")
     parser.add_argument("--challenges", default="", help="override fixtures/challenges directory")
     args = parser.parse_args(argv)
@@ -366,7 +406,7 @@ def main(argv: list[str] | None = None) -> int:
         args.challenge,
         work_root=Path(args.work_root),
         challenges_path=Path(args.challenges) if args.challenges else challenges_dir(),
-        offline=True,
+        mode=args.mode,
     )
     print(render(report))
     return 0 if report.run_n.pass_rate > report.run1.pass_rate else 1

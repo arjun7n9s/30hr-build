@@ -25,7 +25,9 @@ class GithubMcp:
         self.snapshot = snapshot or {}
         self.fixture = FixtureMcp(self.snapshot)
         token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN") or ""
-        self.offline = offline or not token
+        if not offline and not token and os.environ.get(REST_FLAG) != "1":
+            raise RuntimeError("live mode needs GITHUB_TOKEN in local .env")
+        self.offline = offline
         self.token = token
         self.url = os.environ.get("GITHUB_MCP_URL", MCP_URL)
         self._rpc_id = 0
