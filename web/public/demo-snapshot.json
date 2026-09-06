@@ -1,0 +1,115 @@
+{
+  "demo_snapshot": true,
+  "generated_at": "2026-01-14T09:12:00Z",
+  "challenge_id": "frozen",
+  "mode": "offline",
+  "promoted": true,
+  "repo": "arjun7n9s/journeyman-fixture",
+  "run1": {
+    "pass_rate": 0.3, "successes": 3, "n": 10, "cost": 0.0284, "tokens": 14210,
+    "split": "dev", "speed_ms": 48620, "tool_calls": 84,
+    "passed": ["dev-03", "dev-08", "dev-10"]
+  },
+  "run_n": {
+    "pass_rate": 1.0, "successes": 10, "n": 10, "cost": 0.0069, "tokens": 3820,
+    "split": "dev", "speed_ms": 10800, "tool_calls": 21,
+    "passed": ["dev-01","dev-02","dev-03","dev-04","dev-05","dev-06","dev-07","dev-08","dev-09","dev-10"]
+  },
+  "hold_prior": {
+    "pass_rate": 0.333, "successes": 2, "n": 6, "cost": 0.0176, "tokens": 8820,
+    "split": "holdout", "speed_ms": 27800, "tool_calls": 46, "passed": ["hold-03","hold-05"]
+  },
+  "hold_candidate": {
+    "pass_rate": 0.833, "successes": 5, "n": 6, "cost": 0.0044, "tokens": 2410,
+    "split": "holdout", "speed_ms": 6420, "tool_calls": 13,
+    "passed": ["hold-01","hold-02","hold-03","hold-04","hold-05"]
+  },
+  "pointer": { "active": "v3", "candidate": "v3", "prior": "v2" },
+  "candidate_version": "v3",
+  "eval": { "wilson_low": 0.72, "wilson_high": 0.98, "delta": 0.7 },
+  "neatlogs_trace_id": null,
+  "neatlogs_url": "",
+  "journal_path": "runs/journal.md",
+  "diff_path": "runs/playbook.v2.to.v3.diff",
+  "report_path": "runs/last.json",
+  "ui_path": "ui/index.html",
+  "journal": "# Journal\n## Lessons\n- src/billing → logical owner billing (from CODEOWNERS)\n- stack trace with nil/crash → priority:p0 (from CONTRIBUTING.md)\n- dedupe by normalized title tokens after issue_read of both",
+  "diff": "--- playbook.v2.yaml\n+++ playbook.v3.yaml\n@@ rules @@\n WHEN issue.body contains 'stack trace' THEN add labels=['type:bug']\n WHEN issue.body contains ('nil' OR 'crash' OR 'OOM') THEN add labels=['priority:p0']\n WHEN path startsWith 'src/billing' THEN set owner='billing'\n WHEN path startsWith 'src/runtime' THEN set owner='runtime'\n WHEN path startsWith 'src/api' THEN set owner='api'\n WHEN path startsWith 'src/ui' THEN set owner='ui'\n-WHEN duplicate check THEN list_issues then compare titles verbatim\n+WHEN duplicate check THEN issue_read candidate + issue_read baseline; compare normalized title tokens ∧ shared file path in body\n+WHEN issue.body contains file path THEN prefer that path as owner signal over title heuristics\n+WHEN summarize open bugs by area THEN search_issues(is:open label:type:bug label:area:<area>) before list_issues; keep at most 8 in the result",
+  "playbook_entries": [
+    { "id": "core-labels", "text": "Rule: If the issue body has a stack trace, add label type:bug. If it also mentions nil, crash, or OOM, add priority:p0.", "tags": ["labeler","contrib"] },
+    { "id": "core-taxonomy", "text": "This repo uses area:api, area:runtime, area:billing, area:ui, and type:bug, type:feat, type:docs. Match the file path in the body to pick the area label.", "tags": ["taxonomy"] },
+    { "id": "core-owners", "text": "CODEOWNERS assigns src/billing to billing, src/runtime to runtime, src/api to api, src/ui to ui. Answer 'owner' questions with the logical owner name, not the GitHub handle.", "tags": ["owners","codeowners"] },
+    { "id": "core-dedupe", "text": "Two issues are duplicates when their normalized titles share 3+ tokens AND their bodies reference the same file path.", "tags": ["dedupe"] },
+    { "id": "core-search", "text": "Prefer search_issues with label filters over list_issues when the question is 'open bugs in area X'.", "tags": ["policy","cost"] }
+  ],
+  "playbook_rules": [
+    { "id": "r-01", "text": "WHEN issue.body contains 'stack trace' THEN add labels=['type:bug']", "kind": "labeler", "origin": "reflect@v1" },
+    { "id": "r-02", "text": "WHEN issue.body contains ('nil' OR 'crash' OR 'OOM') THEN add labels=['priority:p0']", "kind": "labeler", "origin": "reflect@v1" },
+    { "id": "r-03", "text": "WHEN path startsWith 'src/billing' THEN set owner='billing'", "kind": "owner", "origin": "reflect@v2" },
+    { "id": "r-04", "text": "WHEN duplicate check THEN issue_read candidate + baseline; compare normalized title tokens AND shared file path in body", "kind": "dedupe", "origin": "reflect@v3" },
+    { "id": "r-05", "text": "WHEN summarize open bugs by area THEN search_issues before list_issues", "kind": "policy", "origin": "reflect@v3" }
+  ],
+  "redteam": { "n": 5, "successes": 4, "pass_rate": 0.8 },
+  "children": [
+    { "name": "playbook.retrieve · dev-05", "kind": "cache.embed", "duration_ms": 14, "tokens": 42, "cost": 0, "route": "cheap", "input": "duplicate of I9?", "output": { "hits": ["core-dedupe","core-taxonomy"], "top_score": 0.92 } },
+    { "name": "policy.check · mcp/readonly", "kind": "policy.gate", "duration_ms": 3, "tokens": 0, "route": "cheap", "input": { "tool": "issue_read", "issue_number": 9 }, "output": { "allow": true, "reason": "issue_read ∈ allow.tools" } },
+    { "name": "github.issue_read · #9", "kind": "mcp.tool", "duration_ms": 238, "tokens": 0, "route": "cheap", "input": { "owner": "arjun7n9s", "repo": "journeyman-fixture", "issue_number": 9 }, "output": { "title": "API returns 500 when body is empty", "labels": [], "body_excerpt": "Endpoint POST /v1/things throws 500 at src/api/routes.py:44 on {}" } },
+    { "name": "github.issue_read · #1", "kind": "mcp.tool", "duration_ms": 194, "tokens": 0, "route": "cheap", "input": { "owner": "arjun7n9s", "repo": "journeyman-fixture", "issue_number": 1 }, "output": { "title": "API returns 500 on empty payload", "labels": ["area:api","type:bug"], "body_excerpt": "Traceback at src/api/routes.py:44 …" } },
+    { "name": "actor.synthesize · dedupe", "kind": "model.chat", "duration_ms": 512, "tokens": 380, "cost": 0.00034, "model": "glm-4-7-flash", "route": "cheap", "input": { "prompt": "candidate=I9, baseline=I1, applying dedupe rule (normalized title tokens ∧ file path match)" }, "output": { "duplicate_of": "I1", "confidence": 0.94 } },
+    { "name": "actor.answer · format", "kind": "model.chat", "duration_ms": 168, "tokens": 92, "cost": 0.00009, "model": "glm-4-7-flash", "route": "cheap", "output": { "duplicate_of": 1 } }
+  ],
+  "version_history": [
+    { "version": "v0", "when": "cold start", "trigger": "empty playbook — 'be helpful and confident'", "lesson": "no rules; the actor listed every open issue on every task, guessed labels from the title alone, and hallucinated owner strings.", "evidence": null, "score": { "pass_rate": 0.3, "successes": 3, "n": 10, "tool_calls": 84, "tokens": 14210, "speed_ms": 48620, "cost": 0.0284 }, "playbook_size": 0 },
+    { "version": "v1", "when": "reflect · pass 1", "trigger": "dev-01, dev-04 failed with wrong labels: 'general' instead of area:api / area:runtime.", "lesson": "Merged: stack trace → type:bug, and nil/crash/OOM → priority:p0. Derived from CONTRIBUTING.md label rules the actor never read.", "evidence": { "label": "sources", "refs": ["CONTRIBUTING.md","I1 body","I5 body"] }, "score": { "pass_rate": 0.6, "successes": 6, "n": 10, "tool_calls": 42, "tokens": 8110, "speed_ms": 21400, "cost": 0.0156 }, "playbook_size": 2 },
+    { "version": "v2", "when": "reflect · pass 2", "trigger": "dev-07, dev-08 failed 'owner' by answering '@arjun7n9s' instead of the logical owner name.", "lesson": "Merged: CODEOWNERS map — src/billing → billing, src/runtime → runtime, src/api → api, src/ui → ui. Actor was reading CODEOWNERS but returning the handle, not the logical unit.", "evidence": { "label": "sources", "refs": ["CODEOWNERS","P2 diff","P3 diff"] }, "score": { "pass_rate": 0.8, "successes": 8, "n": 10, "tool_calls": 26, "tokens": 5340, "speed_ms": 14620, "cost": 0.0102 }, "playbook_size": 3 },
+    { "version": "v3", "when": "reflect · pass 3", "trigger": "dev-05, dev-06 failed 'duplicate' — actor list-all'd every issue and matched titles verbatim, missing I9→I1 and I10→I4.", "lesson": "Merged: dedupe fingerprint = normalized title tokens AND shared file-path token in body. Also 'search_issues before list_issues' for area-scoped questions — dropped tool count by 3× on summarize tasks.", "evidence": { "label": "sources", "refs": ["I1 vs I9","I4 vs I10","policy.yaml search_issues"] }, "score": { "pass_rate": 1.0, "successes": 10, "n": 10, "tool_calls": 21, "tokens": 3820, "speed_ms": 10800, "cost": 0.0069 }, "playbook_size": 5 }
+  ],
+  "task_results": {
+    "run1": [
+      { "id": "dev-01", "type": "label", "target": "I1", "passed": false, "duration_ms": 4820, "tool_calls": 9, "tokens": 1420, "cost": 0.0028, "answer": ["type:bug"], "expected": ["area:api","type:bug"] },
+      { "id": "dev-02", "type": "label", "target": "I2", "passed": false, "duration_ms": 4200, "tool_calls": 8, "tokens": 1310, "cost": 0.0026, "answer": ["type:feat"], "expected": ["area:billing","type:feat"] },
+      { "id": "dev-03", "type": "label", "target": "I3", "passed": true, "duration_ms": 3900, "tool_calls": 7, "tokens": 1180, "cost": 0.0024, "answer": ["type:docs"], "expected": ["type:docs"] },
+      { "id": "dev-04", "type": "label", "target": "I5", "passed": false, "duration_ms": 5900, "tool_calls": 11, "tokens": 1720, "cost": 0.0034, "answer": ["type:bug"], "expected": ["area:runtime","priority:p0","type:bug"] },
+      { "id": "dev-05", "type": "duplicate", "target": "I9", "passed": false, "duration_ms": 6200, "tool_calls": 13, "tokens": 1820, "cost": 0.0036, "answer": null, "expected": { "duplicate_of": 1 }, "spans": [
+        { "name": "list_issues (page 1)", "kind": "mcp.tool", "duration_ms": 620 },
+        { "name": "list_issues (page 2)", "kind": "mcp.tool", "duration_ms": 610 },
+        { "name": "search_issues q=empty", "kind": "mcp.tool", "duration_ms": 480 },
+        { "name": "actor.compare titles verbatim", "kind": "model.chat", "duration_ms": 820 },
+        { "name": "actor.answer (no match)", "kind": "model.chat", "duration_ms": 340 }
+      ] },
+      { "id": "dev-06", "type": "duplicate", "target": "I10", "passed": false, "duration_ms": 5900, "tool_calls": 12, "tokens": 1710, "cost": 0.0034, "answer": null, "expected": { "duplicate_of": 4 } },
+      { "id": "dev-07", "type": "owner", "target": "src/billing/charge.py", "passed": false, "duration_ms": 3410, "tool_calls": 6, "tokens": 890, "cost": 0.0018, "answer": "@arjun7n9s", "expected": "billing" },
+      { "id": "dev-08", "type": "owner", "target": "src/runtime/worker.py", "passed": true, "duration_ms": 3200, "tool_calls": 5, "tokens": 840, "cost": 0.0016, "answer": "runtime", "expected": "runtime" },
+      { "id": "dev-09", "type": "summarize", "target": "open bugs in area:api", "passed": false, "duration_ms": 6800, "tool_calls": 8, "tokens": 1810, "cost": 0.0036, "answer": "found 12 issues", "expected": "must mention I1 and I9" },
+      { "id": "dev-10", "type": "fix_pr", "target": "which PR fixed I1", "passed": true, "duration_ms": 4290, "tool_calls": 5, "tokens": 1490, "cost": 0.0030, "answer": "P1", "expected": "P1" }
+    ],
+    "run_n": [
+      { "id": "dev-01", "type": "label", "target": "I1", "passed": true, "duration_ms": 980, "tool_calls": 2, "tokens": 420, "cost": 0.0008, "answer": ["area:api","type:bug"], "expected": ["area:api","type:bug"] },
+      { "id": "dev-02", "type": "label", "target": "I2", "passed": true, "duration_ms": 940, "tool_calls": 2, "tokens": 400, "cost": 0.0008, "answer": ["area:billing","type:feat"], "expected": ["area:billing","type:feat"] },
+      { "id": "dev-03", "type": "label", "target": "I3", "passed": true, "duration_ms": 810, "tool_calls": 2, "tokens": 360, "cost": 0.0007, "answer": ["type:docs"], "expected": ["type:docs"] },
+      { "id": "dev-04", "type": "label", "target": "I5", "passed": true, "duration_ms": 1240, "tool_calls": 2, "tokens": 480, "cost": 0.0009, "answer": ["area:runtime","priority:p0","type:bug"], "expected": ["area:runtime","priority:p0","type:bug"] },
+      { "id": "dev-05", "type": "duplicate", "target": "I9", "passed": true, "duration_ms": 1180, "tool_calls": 3, "tokens": 520, "cost": 0.0010, "answer": { "duplicate_of": 1 }, "expected": { "duplicate_of": 1 }, "spans": [
+        { "name": "playbook.retrieve dedupe rule", "kind": "cache.embed", "duration_ms": 14 },
+        { "name": "issue_read #9", "kind": "mcp.tool", "duration_ms": 240 },
+        { "name": "issue_read #1", "kind": "mcp.tool", "duration_ms": 190 },
+        { "name": "actor.match fingerprint", "kind": "model.chat", "duration_ms": 512 },
+        { "name": "actor.answer", "kind": "model.chat", "duration_ms": 168 }
+      ] },
+      { "id": "dev-06", "type": "duplicate", "target": "I10", "passed": true, "duration_ms": 1220, "tool_calls": 3, "tokens": 540, "cost": 0.0011, "answer": { "duplicate_of": 4 }, "expected": { "duplicate_of": 4 } },
+      { "id": "dev-07", "type": "owner", "target": "src/billing/charge.py", "passed": true, "duration_ms": 680, "tool_calls": 1, "tokens": 210, "cost": 0.0004, "answer": "billing", "expected": "billing" },
+      { "id": "dev-08", "type": "owner", "target": "src/runtime/worker.py", "passed": true, "duration_ms": 640, "tool_calls": 1, "tokens": 200, "cost": 0.0004, "answer": "runtime", "expected": "runtime" },
+      { "id": "dev-09", "type": "summarize", "target": "open bugs in area:api", "passed": true, "duration_ms": 1520, "tool_calls": 2, "tokens": 380, "cost": 0.0008, "answer": "open api bugs: I1, I9 (dup of I1)", "expected": "must mention I1 and I9" },
+      { "id": "dev-10", "type": "fix_pr", "target": "which PR fixed I1", "passed": true, "duration_ms": 1600, "tool_calls": 3, "tokens": 510, "cost": 0.0010, "answer": "P1", "expected": "P1" }
+    ],
+    "hold_prior": [
+      { "id": "hold-01", "type": "label", "passed": false }, { "id": "hold-02", "type": "label", "passed": false },
+      { "id": "hold-03", "type": "label", "passed": true }, { "id": "hold-04", "type": "label", "passed": false },
+      { "id": "hold-05", "type": "owner", "passed": true }, { "id": "hold-06", "type": "summarize", "passed": false }
+    ],
+    "hold_candidate": [
+      { "id": "hold-01", "type": "label", "passed": true }, { "id": "hold-02", "type": "label", "passed": true },
+      { "id": "hold-03", "type": "label", "passed": true }, { "id": "hold-04", "type": "label", "passed": true },
+      { "id": "hold-05", "type": "owner", "passed": true }, { "id": "hold-06", "type": "summarize", "passed": false }
+    ]
+  }
+}

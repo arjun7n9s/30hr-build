@@ -9,6 +9,7 @@ export type Score = {
   split: string;
   speed_ms?: number;
   tool_calls?: number;
+  passed?: string[];
 };
 
 export type PlaybookEntry = {
@@ -24,6 +25,51 @@ export type PlaybookRule = {
   kind?: string;
   origin?: string;
   source?: string;
+};
+
+export type TraceSpan = {
+  name: string;
+  kind: string;
+  input?: unknown;
+  output?: unknown;
+  duration_ms?: number;
+  cost?: number;
+  tokens?: number;
+  model?: string;
+  route?: "cheap" | "escalate" | string;
+};
+
+export type VersionSnapshot = {
+  version: string;
+  when: string;
+  trigger?: string;
+  lesson?: string;
+  evidence?: { label: string; refs: string[] } | null;
+  score: {
+    pass_rate: number;
+    successes: number;
+    n: number;
+    tool_calls: number;
+    tokens: number;
+    speed_ms: number;
+    cost?: number;
+  };
+  playbook_size: number;
+};
+
+export type TaskRunResult = {
+  id: string;
+  type?: string;
+  target?: string;
+  passed?: boolean;
+  ok?: boolean;
+  duration_ms?: number;
+  tool_calls?: number;
+  tokens?: number;
+  cost?: number;
+  answer?: unknown;
+  expected?: unknown;
+  spans?: TraceSpan[];
 };
 
 export type Report = {
@@ -45,14 +91,25 @@ export type Report = {
   playbook_entries: PlaybookEntry[];
   playbook_rules?: PlaybookRule[];
   redteam: { n: number; successes: number; pass_rate: number } | null;
-  children: { name: string; kind: string; input?: unknown; output?: unknown }[];
+  children: TraceSpan[];
   candidate_version?: string | null;
+  version_history?: VersionSnapshot[];
+  task_results?: {
+    run1?: TaskRunResult[];
+    run_n?: TaskRunResult[];
+    hold_prior?: TaskRunResult[];
+    hold_candidate?: TaskRunResult[];
+  };
+  demo_snapshot?: boolean;
+  generated_at?: string;
 };
 
 export type Lesson = {
   id: string;
   text: string;
   source: "entry" | "rule";
+  origin?: string;
+  tags?: string[];
 };
 
 const TELEMETRY_LINE =
@@ -112,14 +169,18 @@ function uniqueLessons(lessons: Lesson[]): Lesson[] {
   return out;
 }
 
-/** Human playbook lines for judges. Never CORE.md telemetry. */
 export function humanLessons(report: Pick<Report, "playbook_entries" | "playbook_rules">): Lesson[] {
   const fromEntries: Lesson[] = [];
   for (const entry of report.playbook_entries ?? []) {
     if ((entry.tags ?? []).includes("weak")) continue;
     for (const chunk of splitEntryText(entry.text ?? "")) {
       if (!isHumanLesson(chunk)) continue;
-      fromEntries.push({ id: entry.id, text: chunk.replace(/^Rule:\s*/i, ""), source: "entry" });
+      fromEntries.push({
+        id: entry.id,
+        text: chunk.replace(/^Rule:\s*/i, ""),
+        source: "entry",
+        tags: entry.tags,
+      });
     }
   }
 
@@ -130,10 +191,15 @@ export function humanLessons(report: Pick<Report, "playbook_entries" | "playbook
     const text = humanizeRuleText(raw);
     if (!isHumanLesson(text) && text.length > 280) continue;
     if (text.length < 12) continue;
-    fromRules.push({ id: rule.id, text, source: "rule" });
+    fromRules.push({
+      id: rule.id,
+      text,
+      source: "rule",
+      origin: rule.origin ?? rule.source,
+      tags: rule.tags,
+    });
   }
 
-  // Prefer a mix: entry prose first, then distinct rule beliefs.
   return uniqueLessons([...fromEntries, ...fromRules]);
 }
 
@@ -161,7 +227,11 @@ export function isWeakPlaybook(report: Pick<Report, "playbook_entries" | "pointe
   return active === "weak-0" || active === "v0" || active.startsWith("weak");
 }
 
-export function deltaLabel(before: number, after: number, { invert = false } = {}): string {
+export function deltaLabel(
+  before: number,
+  after: number,
+  { invert = false } = {},
+): "up" | "down" | "flat" {
   const better = invert ? after < before : after > before;
   const worse = invert ? after > before : after < before;
   if (better) return "up";
@@ -169,11 +239,12 @@ export function deltaLabel(before: number, after: number, { invert = false } = {
   return "flat";
 }
 
-export function formatCost(value: number): string {
-  if (!Number.isFinite(value)) return "—";
-  if (value === 0) return "0";
-  if (value >= 1) return value.toFixed(2);
-  return value.toFixed(4);
+export function formatCost(value: number | undefined): string {
+  if (value === undefined || !Number.isFinite(value)) return "—";
+  if (value === 0) return "$0";
+  if (value >= 1) return `$${value.toFixed(2)}`;
+  if (value >= 0.01) return `$${value.toFixed(3)}`;
+  return `$${value.toFixed(4)}`;
 }
 
 export function formatPct(value?: number): string {
@@ -181,6 +252,108 @@ export function formatPct(value?: number): string {
   return `${Math.round(value * 1000) / 10}%`;
 }
 
+export function formatMs(value?: number): string {
+  if (value === undefined || !Number.isFinite(value)) return "—";
+  if (value >= 1000) return `${(value / 1000).toFixed(2)}s`;
+  return `${Math.round(value)}ms`;
+}
+
+export function formatTokens(value?: number): string {
+  if (value === undefined) return "—";
+  if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
+  return String(value);
+}
+
 export function toolsOf(score: Score): number {
   return score.tool_calls ?? 0;
+}
+
+const NEATLOGS_APP = "https://app.neatlogs.com";
+const NEATLOGS_ORG = "8bd3fd8b-e753-4ace-8eeb-da3006f631f3";
+const NEATLOGS_PROJECT = "66d21721-995d-49b1-83e1-0427e9b56059";
+
+export function cockpitHref(report: Pick<Report, "neatlogs_trace_id" | "neatlogs_url">): string {
+  const raw = report.neatlogs_url || "";
+  if (raw.includes("/traces/")) return raw;
+  const fromQuery = raw.match(/[?&]trace_id=([^&]+)/)?.[1];
+  const id = report.neatlogs_trace_id || fromQuery;
+  if (!id) return NEATLOGS_APP;
+  return `${NEATLOGS_APP}/traces/${id}?orgId=${NEATLOGS_ORG}&projectId=${NEATLOGS_PROJECT}`;
+}
+
+export function speedOf(score: Score): number {
+  return score.speed_ms ?? 0;
+}
+
+export function deltaPct(before: number, after: number): string {
+  if (before === 0 && after === 0) return "0%";
+  if (before === 0) return "+∞";
+  const pct = ((after - before) / Math.abs(before)) * 100;
+  const sign = pct >= 0 ? "+" : "";
+  return `${sign}${pct.toFixed(pct >= 10 || pct <= -10 ? 0 : 1)}%`;
+}
+
+export function ratioBar(value: number, max: number): number {
+  if (max <= 0) return 0;
+  return Math.max(0.02, Math.min(1, value / max));
+}
+
+/** Map DEV task ids to pass/fail for a given run. */
+export function taskMatrix(
+  results: TaskRunResult[] | undefined,
+  taskIds: string[],
+): Map<string, boolean> {
+  const map = new Map<string, boolean>();
+  if (!results) return map;
+  const idx = new Map(results.map((r) => [r.id, r]));
+  for (const id of taskIds) {
+    const hit = idx.get(id);
+    if (!hit) continue;
+    const p = hit.passed ?? hit.ok;
+    map.set(id, !!p);
+  }
+  return map;
+}
+
+/** Version history — either explicit array or derived from run1/run_n. */
+export function versionHistory(report: Report): VersionSnapshot[] {
+  if (report.version_history && report.version_history.length > 0) {
+    return report.version_history;
+  }
+  return [
+    {
+      version: report.pointer.prior ?? "v0",
+      when: "cold start",
+      trigger: "empty playbook",
+      lesson: "no prior lessons",
+      evidence: null,
+      score: {
+        pass_rate: report.run1.pass_rate,
+        successes: report.run1.successes,
+        n: report.run1.n,
+        tool_calls: toolsOf(report.run1),
+        tokens: report.run1.tokens,
+        speed_ms: speedOf(report.run1),
+        cost: report.run1.cost,
+      },
+      playbook_size: 0,
+    },
+    {
+      version: report.pointer.active,
+      when: "post-reflect",
+      trigger: "DEV failure analysis",
+      lesson: "merged playbook from failed traces",
+      evidence: null,
+      score: {
+        pass_rate: report.run_n.pass_rate,
+        successes: report.run_n.successes,
+        n: report.run_n.n,
+        tool_calls: toolsOf(report.run_n),
+        tokens: report.run_n.tokens,
+        speed_ms: speedOf(report.run_n),
+        cost: report.run_n.cost,
+      },
+      playbook_size: report.playbook_entries.length,
+    },
+  ];
 }
