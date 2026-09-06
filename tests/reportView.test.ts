@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   challengeLessons,
+  cockpitHref,
   journalLessons,
   humanLessons,
   isTelemetryLine,
@@ -77,5 +78,16 @@ describe("reportView", () => {
     expect(log.some((line) => line.startsWith("Reflect merged"))).toBe(true);
     expect(log.some((line) => line.startsWith("promoted "))).toBe(true);
     expect(humanLessons({ playbook_entries: [], playbook_rules: [] })).toEqual([]);
+  });
+
+  it("rewrites stale /?trace_id= cockpit links to /traces/{id}", () => {
+    expect(
+      cockpitHref({
+        neatlogs_trace_id: "1fa771b7ae56cb6972b66336fc1f142d",
+        neatlogs_url: "https://app.neatlogs.com/?trace_id=1fa771b7ae56cb6972b66336fc1f142d",
+      }),
+    ).toBe(
+      "https://app.neatlogs.com/traces/1fa771b7ae56cb6972b66336fc1f142d?orgId=8bd3fd8b-e753-4ace-8eeb-da3006f631f3&projectId=66d21721-995d-49b1-83e1-0427e9b56059",
+    );
   });
 });
