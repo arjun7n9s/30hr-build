@@ -1,22 +1,23 @@
 # Journeyman
 
-Journeyman is a self-improving agent workbench: it ingests execution traces, judges failures, synthesizes probes, proposes versioned patches under budget, verifies with exact replay + adversarial suites, routes work cheap-first with quality gates, grows a local skill library (search-before-write), and enforces tool calls through versioned policy streams with optional shadow arms — journaling durable insights across sessions.
+Journeyman is a self-improving agent workbench: it ingests execution traces, judges failures, synthesizes probes, proposes versioned patches under budget, verifies with exact replay, promotes under a sealed hold-out, then red-teams the LIVE version. It routes work cheap-first with `CostRouter.decide`, grows a local skill library (search-before-write), and enforces GitHub MCP readonly tools through versioned policy streams.
 
-This tree is the scaffold. `journeyman.contracts` is the only place shapes live. Mechanisms import those contracts.
+This package is the **source of truth**. `journeyman.contracts` is the only place shapes live. Mechanisms import those contracts. The root TypeScript/Vite tree is legacy mockups.
 
-The supervise cycle follows this order:
+SuperviseCycle (pre-promote):
 
-TraceIngest.poll → FailureJudge.diagnose → skip if not failure → CausalAnalyst.analyze → ProbeFactory.synthesize → resolve baseline → LiveScorer.run_baseline → PromptSurgeon.propose (candidate only) → LiveScorer.run_candidate → ExactReplay.replay → AdversarialProbe.attack → persist postmortem stub
+TraceIngest.poll → FailureJudge.diagnose → skip if not failure → CausalAnalyst.analyze → ProbeFactory.synthesize → resolve baseline → LiveScorer.run_baseline → PromptSurgeon.propose (candidate only) → LiveScorer.run_candidate → ExactReplay.replay → persist postmortem
 
-Ingest skips `session_id=="test"`, `prompt_variant=="candidate"`, and tool-child spans. The seen ring holds 500 ids. PromptSurgeon emits candidate versions only.
+Promote uses Eval DEV plus a sealed hold-out (never a Run1 hold score). RedTeam runs after promote on LIVE. Ingest skips `session_id=="test"`, `prompt_variant=="candidate"`, `split=holdout`, and tool-child spans. The seen ring holds 500 ids.
 
 ## Layout
 
 - `src/journeyman/contracts` — typed models, enums, constants
-- mechanism packages — supervise cycle plus thin evolve/stats/skills/policy/router/gates
-- `playbooks/index.yaml` — harness list (empty, schema-valid)
+- `src/journeyman/runtime` — Actor, ContextGate, SuperviseCycle
+- `src/journeyman/partners` — MCP, chat, ingest sink
+- `playbooks/index.yaml` — harness list
 - `journal/CORE.md` — durable-insight template
-- `tests/` — contracts plus cycle/stats/policy/router coverage
+- `tests/` — contracts, cycle, sealed hold-out, frozen eval
 
 ## Develop
 

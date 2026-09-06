@@ -21,6 +21,7 @@ Journeyman is a self-improving agent workbench: it ingests execution traces, jud
 cd journeyman
 python -m pip install -e ".[dev]"
 python -m pytest
+python -m journeyman.demo.run
 python -m journeyman.demo.run --challenge github_triage_v1
 ```
 
