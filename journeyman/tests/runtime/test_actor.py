@@ -21,6 +21,9 @@ class _RecordingSink:
     def emit_span(self, span: TraceSpan) -> None:
         self.spans.append(span)
 
+    def flush(self) -> str | None:
+        return None
+
 
 def test_actor_refuses_deny_listed_tools() -> None:
     sink = _RecordingSink()

@@ -17,12 +17,17 @@ class TraceSink(Protocol):
 
     def emit_span(self, span: TraceSpan) -> None: ...
 
+    def flush(self) -> str | None: ...
+
 
 class NullTraceSink:
     def emit(self, event: TraceEventRow) -> None:
         return None
 
     def emit_span(self, span: TraceSpan) -> None:
+        return None
+
+    def flush(self) -> str | None:
         return None
 
 

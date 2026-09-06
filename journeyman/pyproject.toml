@@ -21,7 +21,7 @@ dev = [
 where = ["src"]
 
 [tool.setuptools.package-data]
-journeyman = ["py.typed", "policy/*.yaml"]
+journeyman = ["py.typed", "policy/*.yaml", "partners/*.md"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
