@@ -19,6 +19,16 @@ class JournalStore:
     def list(self) -> Journal:
         return Journal(core_path=str(self.root / "CORE.md"), entries=list(self._entries))
 
+    def persist_lesson(self, entry: JournalEntry) -> Path:
+        self.append(entry)
+        self.root.mkdir(parents=True, exist_ok=True)
+        core = self.root / "CORE.md"
+        if not core.exists():
+            core.write_text("# Journal\n\n## Lessons\n\n", encoding="utf-8")
+        with core.open("a", encoding="utf-8") as handle:
+            handle.write(f"- {entry.text}\n")
+        return core
+
     def persist_postmortem(self, item: WorkItem) -> None:
         sessions = self.root / "sessions"
         sessions.mkdir(parents=True, exist_ok=True)

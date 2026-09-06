@@ -1,4 +1,4 @@
-"""Cheap-first cost router. Partners are not HTTP-wired yet; keys come from local .env only."""
+"""Cheap-first cost router. Keys come from local .env only."""
 
 from __future__ import annotations
 
@@ -109,6 +109,10 @@ class CostRouter:
             model=self.embed_model,
             estimated_cost=0.0,
         )
+
+
+def load_local_env(path: Path | None = None) -> None:
+    _load_dotenv(path or Path(".env"))
 
 
 def _load_dotenv(path: Path) -> None:

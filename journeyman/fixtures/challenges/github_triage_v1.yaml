@@ -1,0 +1,88 @@
+{
+  "id": "github_triage_v1",
+  "title": "Answer an issue or pull-request question from repository evidence only",
+  "prompt": "Answer only from retrieved repository evidence. If evidence is missing, say so.",
+  "success_metric": "required keywords present, or abstain when evidence is missing",
+  "repo": "demo/widget",
+  "weak_playbook": {
+    "version": "weak-0",
+    "empty": true,
+    "entries": [
+      {
+        "id": "helpful",
+        "text": "Be helpful and confident. Guess if you are unsure.",
+        "tags": ["weak"],
+        "version": "0"
+      }
+    ]
+  },
+  "dev": [
+    {
+      "id": "issue-timeout",
+      "question": "What does issue 12 say about login timeout?",
+      "expected": "300 seconds"
+    },
+    {
+      "id": "pr-title",
+      "question": "What is the title of pull request 4?",
+      "expected": "fix widget retry"
+    },
+    {
+      "id": "missing-refund",
+      "question": "What is the guaranteed refund policy?",
+      "expected": "missing"
+    }
+  ],
+  "held_out": [
+    {
+      "id": "issue-labels",
+      "question": "Which labels are on issue 12?",
+      "expected": "bug"
+    },
+    {
+      "id": "code-retry",
+      "question": "What retry constant is in src/retry.py?",
+      "expected": "MAX_RETRY = 3"
+    },
+    {
+      "id": "missing-sla",
+      "question": "What is the enterprise SLA in this repository?",
+      "expected": "missing"
+    }
+  ],
+  "github": {
+    "repo": "demo/widget",
+    "issues": [
+      {
+        "number": 12,
+        "title": "Login timeout too short",
+        "body": "Increase login timeout to 300 seconds.",
+        "labels": ["bug"],
+        "state": "open"
+      }
+    ],
+    "pulls": [
+      {
+        "number": 4,
+        "title": "fix widget retry",
+        "body": "Use MAX_RETRY from src/retry.py",
+        "merged": false,
+        "state": "open"
+      }
+    ],
+    "files": [
+      {
+        "path": "src/retry.py",
+        "content": "MAX_RETRY = 3\n"
+      }
+    ],
+    "commits": [
+      {
+        "sha": "abc1234",
+        "message": "seed retry constant"
+      }
+    ],
+    "branches": ["main"],
+    "labels": [{"name": "bug"}, {"name": "docs"}]
+  }
+}

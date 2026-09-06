@@ -23,4 +23,5 @@ Ingest skips `session_id=="test"`, `prompt_variant=="candidate"`, and tool-child
 ```bash
 python -m pip install -e ".[dev]"
 python -m pytest
+python -m journeyman.demo.run --challenge github_triage_v1
 ```

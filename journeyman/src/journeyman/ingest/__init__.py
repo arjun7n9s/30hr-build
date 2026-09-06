@@ -15,9 +15,14 @@ class TraceSink(Protocol):
 
     def emit(self, event: TraceEventRow) -> None: ...
 
+    def emit_span(self, span: TraceSpan) -> None: ...
+
 
 class NullTraceSink:
     def emit(self, event: TraceEventRow) -> None:
+        return None
+
+    def emit_span(self, span: TraceSpan) -> None:
         return None
 
 
