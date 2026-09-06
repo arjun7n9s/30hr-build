@@ -300,3 +300,108 @@ pre {
   font-size: 1.1rem;
   font-weight: 600;
 }
+
+.seal {
+  display: inline-block;
+  margin: 0 0 1rem;
+  border: 2px solid var(--ink);
+  background: var(--poster);
+  color: var(--ink);
+  padding: 0.4rem 0.7rem;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.story {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 900px) {
+  .story {
+    grid-template-columns: 1fr;
+  }
+}
+
+.step {
+  border: 2px solid var(--ink);
+  background: #fffaf2;
+  padding: 1rem 1.05rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.step h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.2;
+}
+
+.lede,
+.fine,
+.empty {
+  margin: 0;
+}
+
+.lede {
+  color: var(--muted);
+}
+
+.fine {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+}
+
+.score-line {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.lessons {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.lessons li {
+  line-height: 1.4;
+}
+
+.board {
+  margin-top: 0.2rem;
+}
+
+.board caption {
+  caption-side: bottom;
+  text-align: left;
+  padding-top: 0.45rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.system-log summary {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.system-log summary::-webkit-details-marker {
+  display: none;
+}
+
+.system-log[open] pre {
+  margin-top: 0.8rem;
+}
+
+section h2 {
+  margin: 0 0 0.55rem;
+  font-size: 1.15rem;
+}
