@@ -55,6 +55,7 @@ def report_dict(report: Any) -> dict[str, Any]:
         "journal": report.journal_text,
         "diff": report.diff_text,
         "playbook_entries": report.playbook_entries,
+        "playbook_rules": getattr(report, "playbook_rules", None) or [],
         "redteam": report.redteam,
         "children": report.children,
         "repo": report.repo,

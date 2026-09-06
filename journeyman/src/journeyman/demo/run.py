@@ -79,6 +79,7 @@ class DemoReport:
     journal_text: str = ""
     diff_text: str = ""
     playbook_entries: list[dict[str, Any]] = field(default_factory=list)
+    playbook_rules: list[dict[str, Any]] = field(default_factory=list)
     redteam: dict[str, Any] | None = None
     children: list[dict[str, Any]] = field(default_factory=list)
     repo: str = "arjun7n9s/journeyman-fixture"
@@ -381,6 +382,7 @@ def run_demo(
         journal_text=journal_text,
         diff_text=diff_text,
         playbook_entries=[entry.model_dump() for entry in playbook.entries],
+        playbook_rules=[_rule_view(rule) for rule in playbook.rules],
         redteam=redteam,
         children=children,
         repo=challenge.repo,
@@ -416,6 +418,22 @@ def render(report: DemoReport) -> str:
             f"redteam live pass={report.redteam['pass_rate']:.2f} n={report.redteam['n']}"
         )
     return "\n".join(lines)
+
+
+def _rule_view(rule: Any) -> dict[str, Any]:
+    """Slim human rule for the artifact UI. Not CORE.md telemetry."""
+    evidence = getattr(rule, "evidence", None)
+    origin = getattr(evidence, "origin", None)
+    return {
+        "id": rule.id,
+        "text": rule.describe(),
+        "kind": rule.kind.value if hasattr(rule.kind, "value") else str(rule.kind),
+        "status": rule.status.value if hasattr(rule.status, "value") else str(getattr(rule, "status", "")),
+        "origin": origin.value if hasattr(origin, "value") else str(origin or ""),
+        "source": getattr(evidence, "source", "") or "",
+        "refs": list(getattr(evidence, "refs", []) or []),
+        "note": getattr(evidence, "note", "") or "",
+    }
 
 
 def rollback_demo(work_root: Path) -> VersionPointer:

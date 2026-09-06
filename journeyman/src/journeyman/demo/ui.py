@@ -70,13 +70,66 @@ _HTML = """<!doctype html>
     const pct = (n) => n == null ? "—" : Math.round(n * 100) + "%";
     document.getElementById("meta").innerHTML =
       `<div>${R.repo || ""}</div><div>mode ${R.mode}</div><div>active ${R.pointer.active}</div>`;
+    const telemetry = /^(?:[-*]\\s*)?(?:Run\\d+\\s+DEV\\b|Reflect merged\\b|promoted\\s|Derived\\s|Mined\\s|candidate held\\b|postmortem\\s)/i;
+    const failureDump = /When asked .+ do not invent\\.\\s*Failed with/i;
+    const weakAdvice = /be helpful and confident|guess if you are unsure/i;
+    const humanize = (text) => text
+      .replace(/^WHEN\\s+/i, "If ")
+      .replace(/\\s+THEN\\s+/i, ", ")
+      .replace(/\\['([^']+)'\\]/g, "$1")
+      .replace(/\\["([^"]+)"\\]/g, "$1")
+      .replace(/\\bcontains\\b/g, "mentions")
+      .replace(/\\bset owner=/g, "set owner to ")
+      .replace(/\\badd labels=/g, "add label ")
+      .trim();
+    const isHuman = (line) => {
+      const t = (line || "").trim();
+      return t.length >= 12 && t.length <= 280 && !telemetry.test(t) && !failureDump.test(t) && !weakAdvice.test(t);
+    };
+    const lessons = (() => {
+      const out = [];
+      const seen = new Set();
+      const push = (id, text) => {
+        const key = text.toLowerCase();
+        if (seen.has(key) || !isHuman(text)) return;
+        seen.add(key);
+        out.push({ id, text });
+      };
+      (R.playbook_entries || []).forEach((entry) => {
+        if ((entry.tags || []).includes("weak")) return;
+        String(entry.text || "").split(/\\n+/).forEach((chunk) => {
+          push(entry.id, chunk.replace(/^[-*]\\s*/, "").replace(/^Rule:\\s*/i, "").trim());
+        });
+      });
+      (R.playbook_rules || []).forEach((rule) => push(rule.id, humanize(rule.text || "")));
+      return out;
+    })();
+    const systemLog = String(R.journal || "").split(/\\r?\\n/)
+      .map((line) => line.replace(/^[-*]\\s*/, "").trim())
+      .filter((line) => telemetry.test(line));
+    const lessonHtml = (items) => items.length
+      ? `<ul>${items.map((item) => `<li>${item.text}</li>`).join("")}</ul>`
+      : `<p>No human lessons yet. Run <code>python -m journeyman.demo.run --challenge frozen --mode offline</code>.</p>`;
     const pages = {
       challenge: () => `<section>
-        <p class="kicker">Frozen eval. Loop is python -m journeyman.demo.run — this page only reads last.json.</p>
+        <p class="kicker">Challenge ${R.challenge_id} · Cold → Learn → Warm</p>
+        <div class="panel"><strong>Hold-out never trained the playbook.</strong></div>
         <div class="panel">
-          <p>Challenge <strong>${R.challenge_id}</strong> on ${R.repo || "arjun7n9s/journeyman-fixture"}.</p>
-          <p>DEV n=${R.run1 && R.run1.n} · hold-out n=${R.hold_candidate ? R.hold_candidate.n : "sealed until promote"}.</p>
-          <p>Mode <strong>${R.mode}</strong>. Hold-out stays sealed until a candidate improves DEV.</p>
+          <p class="kicker">1 · Cold</p>
+          <p>Run1 DEV on a weak / empty playbook: <strong>${pct(R.run1 && R.run1.pass_rate)}</strong> pass · cost ${R.run1 && R.run1.cost} · ${(R.run1 && R.run1.tool_calls) || 0} tools · ${(R.run1 && R.run1.tokens) || 0} tok.</p>
+        </div>
+        <div class="panel">
+          <p class="kicker">2 · Learn</p>
+          <p>Human lessons from the playbook (not CORE.md telemetry).</p>
+          ${lessonHtml(lessons.slice(0, 4))}
+          <p><button class="stamp" data-goto="playbook">Open Playbook</button></p>
+        </div>
+        <div class="panel">
+          <p class="kicker">3 · Warm</p>
+          <p>RunN DEV <strong>${pct(R.run_n && R.run_n.pass_rate)}</strong> vs Run1 ${pct(R.run1 && R.run1.pass_rate)} · cost ${R.run_n && R.run_n.cost} vs ${R.run1 && R.run1.cost} · ${R.promoted ? "PROMOTED" : "HELD"}.</p>
+          <p>Hold-out stayed sealed until promote${R.hold_candidate ? ` (prior ${pct(R.hold_prior && R.hold_prior.pass_rate)} → candidate ${pct(R.hold_candidate.pass_rate)})` : ""}.</p>
+          <p>Hold-out never trained the playbook.</p>
+          ${R.neatlogs_url ? `<p><a href="${R.neatlogs_url}">Open Neatlogs</a></p>` : ""}
         </div>
       </section>`,
       runs: () => `<section>
@@ -99,8 +152,12 @@ _HTML = """<!doctype html>
         <div class="panel"><p class="kicker">Candidate diff</p><pre>${R.diff || ""}</pre></div>
       </section>`,
       journal: () => `<section>
-        <p class="kicker">${R.journal_path || ""}</p>
-        <div class="panel"><pre>${R.journal || "No lessons yet."}</pre></div>
+        <p class="kicker">Lessons are playbook text. Pipeline telemetry stays in System log.</p>
+        <div class="panel">
+          <p class="kicker">Lessons</p>
+          ${lessonHtml(lessons)}
+        </div>
+        ${systemLog.length ? `<details class="panel"><summary>System log — CORE.md / persist_lesson telemetry</summary><pre>${systemLog.join("\\n")}</pre></details>` : ""}
       </section>`,
       promote: () => `<section>
         <p class="kicker">Promote gate is Actor re-eval on frozen JSON. LiveScorer is aux only.</p>
@@ -119,7 +176,11 @@ _HTML = """<!doctype html>
       main.innerHTML = pages[id]();
     }
     document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => show(t.dataset.tab)));
-    show("runs");
+    document.addEventListener("click", (ev) => {
+      const go = ev.target && ev.target.closest && ev.target.closest("[data-goto]");
+      if (go) show(go.dataset.goto);
+    });
+    show("challenge");
   </script>
 </body>
 </html>
