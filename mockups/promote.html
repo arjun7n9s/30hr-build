@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Journeyman // Promote &amp; Rollback Gate</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand-section">
+      <a href="runs.html" class="brand-badge">
+        <div class="brand-symbol">J</div>
+        <div class="brand-title">
+          JOURNEYMAN
+          <span class="version-tag">APPRENTICE AGENT</span>
+        </div>
+      </a>
+      <div class="repo-pill">
+        <span class="dot"></span>
+        <span>arjun7n9s/journeyman-fixture</span>
+      </div>
+    </div>
+
+    <nav class="app-nav">
+      <a href="runs.html" class="nav-link"><span class="nav-shortcut">1</span> Runs Scoreboard</a><a href="challenge.html" class="nav-link"><span class="nav-shortcut">2</span> Challenge</a><a href="trace.html" class="nav-link"><span class="nav-shortcut">3</span> Trace Cockpit</a><a href="playbook.html" class="nav-link"><span class="nav-shortcut">4</span> Playbook Viewer</a><a href="journal.html" class="nav-link"><span class="nav-shortcut">5</span> Journal</a><a href="promote.html" class="nav-link active"><span class="nav-shortcut">6</span> Promote / Rollback</a>
+    </nav>
+
+    <div class="header-meta">
+      <div class="mcp-status-chip">
+        <span style="color:#38bdf8;">MCP</span>
+        <span>github:readonly</span>
+      </div>
+      <div class="status-badge-active" id="header-active-pointer">
+        <span style="width:6px;height:6px;background:#38bdf8;border-radius:50%;display:inline-block;"></span>
+        <span>ACTIVE: v3 (promoted)</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-container">
+    <!-- TOP SEALED PROTOCOL BANNER -->
+    <div class="guardrail-alert" style="background: rgba(192, 132, 252, 0.08); border-color: var(--split-holdout-border);">
+      <span class="alert-icon" style="color: var(--split-holdout);">&#128274;</span>
+      <div>
+        <strong style="color: #fff;">SEALED HOLD-OUT PROMOTION &amp; ROLLBACK GATE &bull; SAFETY GOVERNANCE</strong><br>
+        The 6 hold-out evaluation tasks are cryptographically sealed. <strong>Hold-out never trained the playbook</strong>: its traces are quarantined from reflection.
+        Judges can <strong>Approve</strong> candidates that pass the gate, <strong>Reject</strong> budget-exhaust failures without collateral damage, or <strong>Rollback</strong> the active pointer to any prior verified version.
+      </div>
+    </div>
+
+    <!-- CANDIDATE PROMOTION HERO -->
+    <section class="promote-hero">
+      <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 10px;">
+        <div>
+          <span style="font-size: 11px; font-weight: 700; color: var(--accent-amber); font-family: var(--font-mono); text-transform: uppercase;">PROMOTION &amp; ROLLBACK CONTROLS</span>
+          <h1 style="font-size: 16px; font-weight: 700; color: #fff; margin-top: 2px;">
+            Active Version Pointer: <span id="active-pointer-badge" style="color: var(--accent-cyan);">v3</span> &larr;&rarr; Candidate <span style="color: var(--accent-amber);">v4-candidate</span>
+          </h1>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="badge badge-version active" id="current-active-pill">ACTIVE: v3</span>
+          <span style="color: var(--text-muted);">&rarr;</span>
+          <span class="badge badge-version cand">CANDIDATE: v4</span>
+        </div>
+      </div>
+
+      <!-- SIDE-BY-SIDE SCORECARD (ACTIVE v3 vs CANDIDATE v4) -->
+      <div class="promote-compare-grid">
+        <!-- Card 1: Active v3 -->
+        <div class="metric-card" style="background: #0f141d;" id="active-card">
+          <div class="metric-header">
+            <span style="color: var(--accent-cyan); font-weight: 700;">CURRENT PRODUCTION: v3 (ACTIVE)</span>
+            <span class="badge badge-version active">PROMOTED</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px;">
+            <div>
+              <span style="font-size: 10.5px; color: var(--text-dim); display: block;">DEV SCORE (10 TASKS)</span>
+              <span class="mono" style="font-size: 20px; font-weight: 700; color: #fff;">10/10 (100%)</span>
+              <span style="font-size: 10.5px; color: var(--text-secondary); display: block;">2.1 tools &bull; 1,080 ms</span>
+            </div>
+            <div>
+              <span style="font-size: 10.5px; color: var(--split-holdout); display: block;">&#128274; HOLD-OUT (SEALED)</span>
+              <span class="mono" style="font-size: 20px; font-weight: 700; color: var(--split-holdout);">5/6 (83.3%)</span>
+              <span style="font-size: 10.5px; color: var(--text-secondary); display: block;">2.2 tools &bull; 1,140 ms</span>
+            </div>
+          </div>
+          <div style="margin-top: 6px; font-size: 11px; color: var(--text-muted); border-top: 1px solid var(--border-subtle); padding-top: 6px;">
+            Avg Token Consumption: <span class="mono" style="color: #fff;">3,820 tokens</span> ($0.007 / task)
+          </div>
+        </div>
+
+        <!-- Card 2: Candidate v4 -->
+        <div class="metric-card" style="background: rgba(245, 158, 11, 0.04); border-color: rgba(245, 158, 11, 0.3);">
+          <div class="metric-header">
+            <span style="color: var(--accent-amber); font-weight: 700;">PROMOTION CANDIDATE: v4-candidate</span>
+            <span class="badge badge-version cand">GATING AUDIT</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px;">
+            <div>
+              <span style="font-size: 10.5px; color: var(--text-dim); display: block;">DEV SCORE (10 TASKS)</span>
+              <span class="mono" style="font-size: 20px; font-weight: 700; color: var(--status-pass);">10/10 (100%)</span>
+              <span style="font-size: 10.5px; color: var(--status-pass); display: block;">1.9 tools &bull; 990 ms (-8%)</span>
+            </div>
+            <div>
+              <span style="font-size: 10.5px; color: var(--split-holdout); display: block;">&#128274; HOLD-OUT (SEALED)</span>
+              <span class="mono" style="font-size: 20px; font-weight: 700; color: var(--split-holdout);">5/6 (83.3%)</span>
+              <span style="font-size: 10.5px; color: var(--status-pass); display: block;">2.0 tools &bull; 1,020 ms (-11%)</span>
+            </div>
+          </div>
+          <div style="margin-top: 6px; font-size: 11px; color: var(--text-muted); border-top: 1px solid rgba(255,255,255,0.05); padding-top: 6px; display: flex; justify-content: space-between;">
+            <span>Avg Token Consumption: <span class="mono" style="color: var(--status-pass);">3,410 tokens</span> (-10% cost)</span>
+            <span class="badge badge-pass" style="font-size: 10px;">ZERO REGRESSION</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- INVARIANT GATING CHECKLIST -->
+      <div class="gate-checklist">
+        <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">
+          AUTOMATED SAFETY GATING INVARIANTS &bull; CRITICAL CHECKS
+        </div>
+
+        <div class="checklist-item">
+          <span>1. DEV Accuracy Threshold &ge; 90.0% (Must preserve frozen DEV benchmark)</span>
+          <span class="checklist-status ok">&check; PASS (100.0% &bull; 10/10 exact set)</span>
+        </div>
+
+        <div class="checklist-item">
+          <span>2. Sealed Hold-out Accuracy Threshold &ge; 80.0% (Must generalize to unseen tasks)</span>
+          <span class="checklist-status ok">&check; PASS (83.3% &bull; 5/6 exact set)</span>
+        </div>
+
+        <div class="checklist-item">
+          <span>3. Tool Call Cost Ceiling &le; 3.0 calls/task (Must prevent exploratory crawling)</span>
+          <span class="checklist-status ok">&check; PASS (1.9 calls/task actual)</span>
+        </div>
+
+        <div class="checklist-item">
+          <span>4. Budget Exhaust Safety Guard (Must not promote degraded timeout candidate)</span>
+          <span class="checklist-status ok">&check; PASS (Zero retries, normal completion)</span>
+        </div>
+
+        <div class="checklist-item">
+          <span>5. Dataset Contamination Guard (Hold-out traces strictly quarantined from reflection)</span>
+          <span class="checklist-status ok">&check; PASS (Verified 0 hold-out traces in memory)</span>
+        </div>
+      </div>
+
+      <!-- ACTION BAR: APPROVE, REJECT, ROLLBACK -->
+      <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border-subtle); padding-top: 12px; margin-top: 2px;">
+        <div style="font-size: 11.5px; color: var(--text-secondary); line-height: 1.4;">
+          <strong style="color: #fff;">Promotion &amp; Rollback Policy:</strong> Approving points active pointer to candidate.<br>
+          <span style="color: var(--text-dim);">Safety invariant: Rejecting safely archives candidate without dumping failing exhaust. Rollback restores prior verified pointer.</span>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <!-- ROLLBACK BUTTON -->
+          <button class="filter-btn" onclick="executeRollback('v2')" style="padding: 8px 14px; border-color: rgba(245, 158, 11, 0.4); color: var(--accent-amber); font-weight: 600;">
+            &#8634; Rollback to v2...
+          </button>
+          <!-- REJECT BUTTON -->
+          <button class="btn-reject" onclick="rejectCandidate()" style="padding: 8px 14px; border-radius: 5px; font-weight: 600; cursor: pointer;">
+            &cross; Reject Candidate
+          </button>
+          <!-- APPROVE BUTTON -->
+          <button class="btn-primary btn-approve" onclick="approveCandidate()" style="padding: 8px 18px; border-radius: 5px; font-weight: 700; cursor: pointer;">
+            &check; Approve &amp; Promote v4
+          </button>
+        </div>
+      </div>
+
+      <!-- Action feedback alert -->
+      <div id="action-alert" style="display: none; padding: 10px; border-radius: 5px; font-family: var(--font-mono); font-size: 11px; margin-top: 8px;"></div>
+    </section>
+
+    <!-- VERSION POINTER & ROLLBACK AUDIT TABLE -->
+    <div class="panel-card">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span>&#8634;</span>
+          <span>Version Pointer History &amp; Rollback Targets</span>
+        </div>
+        <span class="badge badge-dev">AUDIT TRAIL</span>
+      </div>
+
+      <div style="padding: 10px 14px; overflow-x: auto;">
+        <table class="data-table" style="font-size: 11.5px;">
+          <thead>
+            <tr>
+              <th>Version</th>
+              <th>Status</th>
+              <th>Promoted Timestamp</th>
+              <th>DEV Accuracy</th>
+              <th>Hold-out Headline</th>
+              <th>Tool Calls</th>
+              <th>Latency</th>
+              <th style="text-align: right;">Rollback Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge badge-version cand">v4-candidate</span></td>
+              <td><span style="color: var(--accent-amber); font-weight: 600;">Under Review (Gating)</span></td>
+              <td class="mono">--</td>
+              <td class="mono" style="color: var(--status-pass);">10/10 (100%)</td>
+              <td class="mono" style="color: var(--split-holdout);">5/6 (83.3%)</td>
+              <td class="mono">1.9 calls</td>
+              <td class="mono">990 ms</td>
+              <td style="text-align: right; color: var(--text-dim);">[Candidate]</td>
+            </tr>
+            <tr style="background: rgba(56, 189, 248, 0.04);">
+              <td><span class="badge badge-version active">v3 (CURRENT)</span></td>
+              <td><span style="color: var(--accent-cyan); font-weight: 700;">&bull; ACTIVE IN PRODUCTION</span></td>
+              <td class="mono">2026-09-06 03:45 UTC</td>
+              <td class="mono" style="color: var(--status-pass);">10/10 (100%)</td>
+              <td class="mono" style="color: var(--split-holdout);">5/6 (83.3%)</td>
+              <td class="mono">2.1 calls</td>
+              <td class="mono">1,080 ms</td>
+              <td style="text-align: right;"><span class="mono" style="color: var(--accent-cyan);">ACTIVE POINTER</span></td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-version">v2</span></td>
+              <td><span style="color: var(--text-muted);">Historical Stable</span></td>
+              <td class="mono">2026-09-06 02:50 UTC</td>
+              <td class="mono">7/10 (70.0%)</td>
+              <td class="mono" style="color: var(--text-dim);">[Not Run]</td>
+              <td class="mono">3.9 calls</td>
+              <td class="mono">2,150 ms</td>
+              <td style="text-align: right;">
+                <button class="filter-btn" onclick="executeRollback('v2')" style="padding: 2px 8px; font-size: 11px; color: var(--accent-amber);">
+                  &#8634; Rollback to v2
+                </button>
+              </td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-version">v1</span></td>
+              <td><span style="color: var(--text-dim);">Historical Initial</span></td>
+              <td class="mono">2026-09-06 01:15 UTC</td>
+              <td class="mono">4/10 (40.0%)</td>
+              <td class="mono" style="color: var(--text-dim);">[Not Run]</td>
+              <td class="mono">5.6 calls</td>
+              <td class="mono">3,240 ms</td>
+              <td style="text-align: right;">
+                <button class="filter-btn" onclick="executeRollback('v1')" style="padding: 2px 8px; font-size: 11px; color: var(--text-muted);">
+                  &#8634; Rollback to v1
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SEALED HOLD-OUT TASK DETAIL BREAKDOWN -->
+    <div class="panel-card">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span>&#128274;</span>
+          <span>Sealed Hold-out Suite Verification Results (6 Tasks Frozen)</span>
+        </div>
+        <div style="font-family: var(--font-mono); font-size: 11px; color: var(--split-holdout);">
+          Eval Run: run-20260906-13 &bull; Evaluated at Promotion Gate
+        </div>
+      </div>
+
+      <div style="padding: 10px 14px; overflow-x: auto;">
+        <table class="data-table" style="font-size: 11.5px;">
+          <thead>
+            <tr>
+              <th style="width: 80px;">Task ID</th>
+              <th style="width: 65px;">Type</th>
+              <th>Task Prompt / Fixture Target</th>
+              <th>Expected Output</th>
+              <th>Candidate v4 Output</th>
+              <th style="width: 70px;">Calls</th>
+              <th style="width: 80px;">Latency</th>
+              <th style="text-align: center; width: 90px;">Outcome</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="mono badge badge-holdout">hold-01</span></td>
+              <td><span class="mono">label</span></td>
+              <td>I13: Add CSV export for invoices</td>
+              <td><span class="gh-label type-feat">type:feat</span><span class="gh-label area-billing">area:billing</span></td>
+              <td><span class="gh-label type-feat">type:feat</span><span class="gh-label area-billing">area:billing</span></td>
+              <td class="mono">2</td>
+              <td class="mono">980 ms</td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+            </tr>
+            <tr>
+              <td><span class="mono badge badge-holdout">hold-02</span></td>
+              <td><span class="mono">label</span></td>
+              <td>I14: Panic in worker when ctx canceled</td>
+              <td><span class="gh-label type-bug">type:bug</span><span class="gh-label area-runtime">area:runtime</span><span class="gh-label priority-p0">p0</span></td>
+              <td><span class="gh-label type-bug">type:bug</span><span class="gh-label area-runtime">area:runtime</span><span class="gh-label priority-p0">p0</span></td>
+              <td class="mono">1</td>
+              <td class="mono">840 ms</td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+            </tr>
+            <tr>
+              <td><span class="mono badge badge-holdout">hold-03</span></td>
+              <td><span class="mono">label</span></td>
+              <td>I15: Fix typo in contributing guide</td>
+              <td><span class="gh-label type-docs">type:docs</span></td>
+              <td><span class="gh-label type-docs">type:docs</span></td>
+              <td class="mono">2</td>
+              <td class="mono">920 ms</td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+            </tr>
+            <tr>
+              <td><span class="mono badge badge-holdout">hold-04</span></td>
+              <td><span class="mono">label</span></td>
+              <td>I17: REST handler 500 on null JSON</td>
+              <td><span class="gh-label type-bug">type:bug</span><span class="gh-label area-api">area:api</span></td>
+              <td><span class="gh-label type-bug">type:bug</span><span class="gh-label area-api">area:api</span></td>
+              <td class="mono">2</td>
+              <td class="mono">1,010 ms</td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+            </tr>
+            <tr>
+              <td><span class="mono badge badge-holdout">hold-05</span></td>
+              <td><span class="mono">owner</span></td>
+              <td>PR path: src/ui/app.tsx</td>
+              <td><span class="mono">owner: ui</span></td>
+              <td><span class="mono">owner: ui</span></td>
+              <td class="mono">1</td>
+              <td class="mono">760 ms</td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+            </tr>
+            <tr>
+              <td><span class="mono badge badge-holdout">hold-06</span></td>
+              <td><span class="mono">summarize</span></td>
+              <td>Open docs issues in repository</td>
+              <td><span class="mono">must mention I3, I8</span></td>
+              <td><span class="mono">mentioned I3, I8, I15</span></td>
+              <td class="mono">3</td>
+              <td class="mono">1,480 ms</td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function approveCandidate() {
+      const alert = document.getElementById('action-alert');
+      alert.style.display = 'block';
+      alert.style.background = 'rgba(16, 185, 129, 0.15)';
+      alert.style.border = '1px solid rgba(16, 185, 129, 0.35)';
+      alert.style.color = '#a7f3d0';
+      alert.innerHTML = '&#10004; PROMOTION SUCCESS: Playbook v4 approved! Active version pointer is now updated to v4.';
+      document.getElementById('active-pointer-badge').innerText = 'v4';
+      document.getElementById('current-active-pill').innerText = 'ACTIVE: v4';
+      document.getElementById('header-active-pointer').innerHTML = '<span style="width:6px;height:6px;background:#38bdf8;border-radius:50%;display:inline-block;"></span> <span>ACTIVE: v4 (promoted)</span>';
+    }
+
+    function rejectCandidate() {
+      const alert = document.getElementById('action-alert');
+      alert.style.display = 'block';
+      alert.style.background = 'rgba(244, 63, 94, 0.15)';
+      alert.style.border = '1px solid rgba(244, 63, 94, 0.35)';
+      alert.style.color = '#fecdd3';
+      alert.innerHTML = '&#9888; CANDIDATE REJECTED: Candidate v4 safely archived. Active version pointer remains pinned to Playbook v3.';
+    }
+
+    function executeRollback(version) {
+      const alert = document.getElementById('action-alert');
+      alert.style.display = 'block';
+      alert.style.background = 'rgba(245, 158, 11, 0.15)';
+      alert.style.border = '1px solid rgba(245, 158, 11, 0.35)';
+      alert.style.color = '#fde68a';
+      alert.innerHTML = '&#8634; ROLLBACK EXECUTED: Active version pointer has been rolled back to Playbook ' + version + '. Subsequent triage runs will retrieve ' + version + '.';
+      document.getElementById('active-pointer-badge').innerText = version;
+      document.getElementById('current-active-pill').innerText = 'ACTIVE: ' + version;
+      document.getElementById('header-active-pointer').innerHTML = '<span style="width:6px;height:6px;background:#fbbf24;border-radius:50%;display:inline-block;"></span> <span>ACTIVE: ' + version + ' (rolled back)</span>';
+    }
+  </script>
+
+  <script>
+    window.addEventListener('keydown', (e) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+      if (e.key === '1') window.location.href = 'runs.html';
+      if (e.key === '2') window.location.href = 'challenge.html';
+      if (e.key === '3') window.location.href = 'trace.html';
+      if (e.key === '4') window.location.href = 'playbook.html';
+      if (e.key === '5') window.location.href = 'journal.html';
+      if (e.key === '6') window.location.href = 'promote.html';
+    });
+  </script>
+</body>
+</html>

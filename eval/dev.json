@@ -1,0 +1,188 @@
+{
+  "split": "dev",
+  "repo": "arjun7n9s/journeyman-fixture",
+  "tasks": [
+    {
+      "id": "dev-01",
+      "type": "label",
+      "prompt": "What labels should this issue get, using this repo's taxonomy?",
+      "github": {
+        "issue_key": "I1",
+        "issue_number": 1
+      },
+      "expected": {
+        "labels": [
+          "area:api",
+          "type:bug"
+        ]
+      },
+      "score": {
+        "accuracy": "exact_set"
+      }
+    },
+    {
+      "id": "dev-02",
+      "type": "label",
+      "prompt": "What labels should this issue get, using this repo's taxonomy?",
+      "github": {
+        "issue_key": "I2",
+        "issue_number": 2
+      },
+      "expected": {
+        "labels": [
+          "area:billing",
+          "type:feat"
+        ]
+      },
+      "score": {
+        "accuracy": "exact_set"
+      }
+    },
+    {
+      "id": "dev-03",
+      "type": "label",
+      "prompt": "What labels should this issue get, using this repo's taxonomy?",
+      "github": {
+        "issue_key": "I3",
+        "issue_number": 3
+      },
+      "expected": {
+        "labels": [
+          "type:docs"
+        ]
+      },
+      "score": {
+        "accuracy": "exact_set"
+      }
+    },
+    {
+      "id": "dev-04",
+      "type": "label",
+      "prompt": "What labels should this issue get, using this repo's taxonomy?",
+      "github": {
+        "issue_key": "I5",
+        "issue_number": 5
+      },
+      "expected": {
+        "labels": [
+          "area:runtime",
+          "priority:p0",
+          "type:bug"
+        ]
+      },
+      "score": {
+        "accuracy": "exact_set"
+      }
+    },
+    {
+      "id": "dev-05",
+      "type": "duplicate",
+      "prompt": "Is this issue a duplicate? If so, of which existing issue?",
+      "github": {
+        "issue_key": "I9",
+        "issue_number": 9
+      },
+      "expected": {
+        "duplicate_of": 1,
+        "duplicate_of_key": "I1"
+      },
+      "score": {
+        "accuracy": "exact"
+      }
+    },
+    {
+      "id": "dev-06",
+      "type": "duplicate",
+      "prompt": "Is this issue a duplicate? If so, of which existing issue?",
+      "github": {
+        "issue_key": "I10",
+        "issue_number": 10
+      },
+      "expected": {
+        "duplicate_of": 4,
+        "duplicate_of_key": "I4"
+      },
+      "score": {
+        "accuracy": "exact"
+      }
+    },
+    {
+      "id": "dev-07",
+      "type": "owner",
+      "prompt": "Who is the logical owner of `src/billing/charge.py`?",
+      "github": {
+        "path": "src/billing/charge.py",
+        "pr_key": "P3",
+        "pr_number": 21
+      },
+      "expected": {
+        "owner": "billing"
+      },
+      "score": {
+        "accuracy": "exact"
+      }
+    },
+    {
+      "id": "dev-08",
+      "type": "owner",
+      "prompt": "Who is the logical owner of `src/runtime/worker.py`?",
+      "github": {
+        "path": "src/runtime/worker.py",
+        "pr_key": "P2",
+        "pr_number": 20
+      },
+      "expected": {
+        "owner": "runtime"
+      },
+      "score": {
+        "accuracy": "exact"
+      }
+    },
+    {
+      "id": "dev-09",
+      "type": "summarize",
+      "prompt": "Summarize open bugs in area:api.",
+      "github": {
+        "labels": [
+          "type:bug",
+          "area:api"
+        ],
+        "state": "open"
+      },
+      "expected": {
+        "must_mention": [
+          1
+        ],
+        "must_mention_keys": [
+          "I1"
+        ],
+        "must_mention_if_open": [
+          9
+        ],
+        "must_mention_if_open_keys": [
+          "I9"
+        ]
+      },
+      "score": {
+        "accuracy": "required_keys"
+      }
+    },
+    {
+      "id": "dev-10",
+      "type": "fix_pr",
+      "prompt": "Which PR fixed I1 / API returns 500 on empty payload?",
+      "github": {
+        "issue_key": "I1",
+        "issue_number": 1
+      },
+      "expected": {
+        "pr": 19,
+        "pr_number": 19,
+        "pr_key": "P1"
+      },
+      "score": {
+        "accuracy": "exact"
+      }
+    }
+  ]
+}

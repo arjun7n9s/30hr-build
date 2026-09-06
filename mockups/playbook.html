@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Journeyman // Playbook Viewer</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand-section">
+      <a href="runs.html" class="brand-badge">
+        <div class="brand-symbol">J</div>
+        <div class="brand-title">
+          JOURNEYMAN
+          <span class="version-tag">APPRENTICE AGENT</span>
+        </div>
+      </a>
+      <div class="repo-pill">
+        <span class="dot"></span>
+        <span>arjun7n9s/journeyman-fixture</span>
+      </div>
+    </div>
+
+        <nav class="app-nav">
+      <a href="runs.html" class="nav-link"><span class="nav-shortcut">1</span> Runs Scoreboard</a><a href="challenge.html" class="nav-link"><span class="nav-shortcut">2</span> Challenge</a><a href="trace.html" class="nav-link"><span class="nav-shortcut">3</span> Trace Cockpit</a><a href="playbook.html" class="nav-link active"><span class="nav-shortcut">4</span> Playbook Viewer</a><a href="journal.html" class="nav-link"><span class="nav-shortcut">5</span> Journal</a><a href="promote.html" class="nav-link"><span class="nav-shortcut">6</span> Promote / Rollback</a>
+    </nav>
+
+    <div class="header-meta">
+      <div class="partner-chip">
+        <span style="color:#f472b6;">TMX</span>
+        <span>glm-4-7-flash</span>
+      </div>
+      <div class="partner-chip">
+        <span style="color:#38bdf8;">Neatlogs</span>
+        <span>Trace SoR</span>
+      </div>
+      <div class="status-badge-active">
+        <span style="width:6px;height:6px;background:#38bdf8;border-radius:50%;display:inline-block;"></span>
+        <span>ACTIVE: v3 (promoted)</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-container">
+    <!-- SUBHEADER / ACTIVE POINTER -->
+    <div class="controls-bar" style="background: linear-gradient(180deg, #131922 0%, #0d1117 100%);">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">ACTIVE POINTER:</span>
+        <span class="badge badge-version active" style="font-size: 11px;">&bull; v3 (ACTIVE IN PRODUCTION)</span>
+        <span style="font-size: 11px; color: var(--text-secondary);">Learned from 10 DEV traces &bull; Zero hold-out contamination</span>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <button class="filter-btn active" id="tab-btn-rules" onclick="switchView('rules')">Structured Playbook</button>
+        <button class="filter-btn" id="tab-btn-diff" onclick="switchView('diff')">Git-Style Diff (v2 &rarr; v3)</button>
+      </div>
+    </div>
+
+    <!-- MAIN TWO-COLUMN PLAYBOOK LAYOUT -->
+    <div class="playbook-layout">
+      <!-- LEFT: VERSION SELECTOR -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>&para;</span>
+            <span>Version History</span>
+          </div>
+          <span class="badge badge-dev">5 RELEASES</span>
+        </div>
+
+        <div class="panel-body" style="padding: 10px;">
+          <div class="version-list">
+            <!-- v4 Candidate -->
+            <div class="version-item" onclick="selectVersion('v4')">
+              <div class="version-top-row">
+                <span class="version-name" style="color: var(--accent-amber);">v4-candidate</span>
+                <span class="badge badge-version cand">GATING</span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-secondary);">
+                PR resolution heuristics + tightened duplicate dedupe.
+              </div>
+              <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); margin-top: 2px;">
+                DEV: 10/10 (100%) &bull; 990 ms &bull; 1.9 tools
+              </div>
+            </div>
+
+            <!-- v3 Active -->
+            <div class="version-item selected" onclick="selectVersion('v3')">
+              <div class="version-top-row">
+                <span class="version-name" style="color: var(--accent-cyan);">v3 (ACTIVE)</span>
+                <span class="badge badge-version active">&bull; ACTIVE</span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-primary);">
+                Added search-before-list-all &amp; full CODEOWNERS logical mapping.
+              </div>
+              <div style="font-family: var(--font-mono); font-size: 10px; color: var(--accent-cyan); margin-top: 2px;">
+                DEV: 10/10 (100%) &bull; 1,080 ms &bull; 2.1 tools
+              </div>
+            </div>
+
+            <!-- v2 -->
+            <div class="version-item" onclick="selectVersion('v2')">
+              <div class="version-top-row">
+                <span class="version-name">v2</span>
+                <span class="mono" style="font-size: 10px; color: var(--text-muted);">HISTORICAL</span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-secondary);">
+                Stack trace &rarr; bug + priority rules from CONTRIBUTING.md.
+              </div>
+              <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); margin-top: 2px;">
+                DEV: 7/10 (70%) &bull; 2,150 ms &bull; 3.9 tools
+              </div>
+            </div>
+
+            <!-- v1 -->
+            <div class="version-item" onclick="selectVersion('v1')">
+              <div class="version-top-row">
+                <span class="version-name">v1</span>
+                <span class="mono" style="font-size: 10px; color: var(--text-muted);">HISTORICAL</span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-secondary);">
+                Initial label taxonomy dump from fixture issues.
+              </div>
+              <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); margin-top: 2px;">
+                DEV: 4/10 (40%) &bull; 3,240 ms &bull; 5.6 tools
+              </div>
+            </div>
+
+            <!-- v0 Baseline -->
+            <div class="version-item" onclick="selectVersion('v0')">
+              <div class="version-top-row">
+                <span class="version-name" style="color: var(--status-fail);">v0 (Baseline)</span>
+                <span class="badge badge-version v0">EMPTY</span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-secondary);">
+                Empty playbook. Zero facts. Blind exploratory crawl.
+              </div>
+              <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); margin-top: 2px;">
+                DEV: 2/10 (20%) &bull; 4,850 ms &bull; 8.4 tools
+              </div>
+            </div>
+          </div>
+
+          <!-- Metadata Box -->
+          <div style="margin-top: 14px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 10px; font-size: 11px; display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-weight: 700; color: var(--text-secondary); text-transform: uppercase; font-size: 10px;">PROVENANCE &amp; PARTNER STACK</div>
+            <div style="color: var(--text-muted);">Target Repo: <span class="mono" style="color: #fff;">arjun7n9s/journeyman-fixture</span></div>
+            <div style="color: var(--text-muted);">Everyday Brain: <span style="color: #f472b6;">TensorMux glm-4-7-flash</span></div>
+            <div style="color: var(--text-muted);">Playbook RAG: <span style="color: #34d399;">OpenAI text-embedding-3-small</span></div>
+            <div style="color: var(--text-muted);">Trace SoR: <span style="color: var(--accent-cyan);">Neatlogs Spans</span></div>
+            <div style="color: var(--text-muted);">Contamination: <span style="color: var(--status-pass);">&check; 0 hold-out traces</span></div>
+            <div style="color: var(--text-muted);">Storage: <span class="mono" style="color: #fff;">.journeyman/playbook.v3.json</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: PLAYBOOK RULES / DIFF CONTENT -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span id="content-icon">&equiv;</span>
+            <span id="content-title">Playbook v3 (Active) &bull; Compiled Grounding Knowledge</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="badge badge-dev">READ-ONLY COMPILED SPEC</span>
+          </div>
+        </div>
+
+        <div class="panel-body" id="rules-view" style="padding: 16px; overflow-y: auto; gap: 16px;">
+          <!-- Section 1: Taxonomy -->
+          <div>
+            <h3 style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+              <span style="color: var(--accent-cyan);">&sect; 1.</span>
+              <span>Label Taxonomy &amp; Heuristic Triggers</span>
+            </h3>
+            <div style="background: var(--bg-code); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 12px; font-size: 12px; line-height: 1.6;">
+              <div style="margin-bottom: 8px;">
+                <span class="gh-label type-bug">type:bug</span>
+                <span style="color: var(--text-secondary);">&larr; Stack trace in issue body, unhandled exception, 500 status code, panic, memory leak.</span>
+              </div>
+              <div style="margin-bottom: 8px;">
+                <span class="gh-label type-feat">type:feat</span>
+                <span style="color: var(--text-secondary);">&larr; User requests for export, dark mode, CSV/PDF download, new endpoint.</span>
+              </div>
+              <div style="margin-bottom: 8px;">
+                <span class="gh-label type-docs">type:docs</span>
+                <span style="color: var(--text-secondary);">&larr; README changes, typos in contributing guide, environment variable documentation, OpenAPI examples.</span>
+              </div>
+              <div style="margin-bottom: 8px;">
+                <span class="gh-label priority-p0">priority:p0</span>
+                <span style="color: var(--text-secondary);">&larr; Crash, nil context, SIGSEGV, worker OOM, double-charging billing webhook retry.</span>
+              </div>
+              <div>
+                <span class="gh-label priority-p1">priority:p1</span>
+                <span style="color: var(--text-secondary);">&larr; High severity functional bugs without process termination.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 2: Subsystem Ownership -->
+          <div>
+            <h3 style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+              <span style="color: var(--accent-cyan);">&sect; 2.</span>
+              <span>Component Ownership &amp; CODEOWNERS Mapping</span>
+            </h3>
+            <div style="background: var(--bg-code); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 12px; font-size: 11.5px; font-family: var(--font-mono); line-height: 1.6;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                  <tr style="border-bottom: 1px solid var(--border-subtle); color: var(--text-muted); text-align: left;">
+                    <th style="padding-bottom: 6px;">File Path Match</th>
+                    <th style="padding-bottom: 6px;">Area Label</th>
+                    <th style="padding-bottom: 6px;">Logical Owner (Eval Target)</th>
+                    <th style="padding-bottom: 6px;">GitHub Handle (Ignored)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="color: #cbd5e1;">src/billing/*</td>
+                    <td><span class="gh-label area-billing">area:billing</span></td>
+                    <td style="color: var(--accent-cyan); font-weight: 700;">billing</td>
+                    <td style="color: var(--text-dim);">@arjun7n9s</td>
+                  </tr>
+                  <tr>
+                    <td style="color: #cbd5e1;">src/runtime/*</td>
+                    <td><span class="gh-label area-runtime">area:runtime</span></td>
+                    <td style="color: var(--accent-cyan); font-weight: 700;">runtime</td>
+                    <td style="color: var(--text-dim);">@arjun7n9s</td>
+                  </tr>
+                  <tr>
+                    <td style="color: #cbd5e1;">src/api/*</td>
+                    <td><span class="gh-label area-api">area:api</span></td>
+                    <td style="color: var(--accent-cyan); font-weight: 700;">api</td>
+                    <td style="color: var(--text-dim);">@arjun7n9s</td>
+                  </tr>
+                  <tr>
+                    <td style="color: #cbd5e1;">src/ui/*</td>
+                    <td><span class="gh-label area-ui">area:ui</span></td>
+                    <td style="color: var(--accent-cyan); font-weight: 700;">ui</td>
+                    <td style="color: var(--text-dim);">@arjun7n9s</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div style="margin-top: 8px; color: var(--status-warn); font-size: 11px;">
+                &bull; INVARIANT LEARNED: Eval answers demand logical owner strings ("billing", "runtime"), NOT GitHub handles ("@arjun7n9s").
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 3: Tool Execution Heuristics -->
+          <div>
+            <h3 style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+              <span style="color: var(--accent-cyan);">&sect; 3.</span>
+              <span>Tool Execution Heuristics (Learned Optimization)</span>
+            </h3>
+            <div style="background: var(--bg-code); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 12px; font-size: 12px; display: flex; flex-direction: column; gap: 8px;">
+              <div>
+                <strong style="color: #fff; font-family: var(--font-mono);">#HEUR-01: search-before-list-all</strong>
+                <p style="color: var(--text-secondary); margin-top: 2px;">
+                  Never invoke <code>github_mcp.list_issues()</code> without search parameters. For duplicate detection and bug lookups, immediately invoke <code>search_issues(q='...')</code>.
+                  <span style="color: var(--status-pass); font-weight: 600;">(Saves 6,000 tokens &amp; 3 HTTP calls per triage)</span>.
+                </p>
+              </div>
+              <div>
+                <strong style="color: #fff; font-family: var(--font-mono);">#HEUR-02: direct-key-lookup</strong>
+                <p style="color: var(--text-secondary); margin-top: 2px;">
+                  When an issue key or PR path is provided in prompt (e.g. <code>src/runtime/worker.py</code>), resolve via memory first, then call <code>get_issue()</code> directly. Do not list repo files.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 4: Duplicate Signatures -->
+          <div>
+            <h3 style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+              <span style="color: var(--accent-cyan);">&sect; 4.</span>
+              <span>Duplicate Fingerprints (Fixture Grounding)</span>
+            </h3>
+            <div style="background: var(--bg-code); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 10px 12px; font-size: 11.5px; font-family: var(--font-mono); color: #cbd5e1; line-height: 1.6;">
+              &bull; Issue <strong>I9</strong> ("API returns 500 when body is empty") &rarr; <code>duplicate_of: I1</code> (Fixed by PR P1)<br>
+              &bull; Issue <strong>I10</strong> ("Worker OOM after long run") &rarr; <code>duplicate_of: I4</code> (Fixed by PR P2)<br>
+              &bull; PR <strong>P1</strong> ("Fix empty payload 500 in API") &rarr; touches <code>src/api/routes.py</code>, closes <code>I1</code>
+            </div>
+          </div>
+        </div>
+
+        <!-- DIFF VIEW (TOGGLEABLE) -->
+        <div class="diff-view" id="diff-view" style="display: none; height: 100%; border: none;">
+          <div class="diff-line ctx"><span class="diff-line-no">1</span>@@ -18,12 +18,24 @@ PLAYBOOK REFLECTION DIFF: v2 -> v3</div>
+          <div class="diff-line ctx"><span class="diff-line-no">2</span>   "version": "v3",</div>
+          <div class="diff-line ctx"><span class="diff-line-no">3</span>   "repo": "arjun7n9s/journeyman-fixture",</div>
+          <div class="diff-line del"><span class="diff-line-no">4</span>-  "heuristic_strategy": "exhaustive_repo_crawl",</div>
+          <div class="diff-line del"><span class="diff-line-no">5</span>-  "fallback_call": "github_mcp.list_issues(state='all')",</div>
+          <div class="diff-line add"><span class="diff-line-no">6</span>+  "heuristic_strategy": "search-before-list-all",</div>
+          <div class="diff-line add"><span class="diff-line-no">7</span>+  "search_policy": { "prefer_query": true, "max_calls": 2 },</div>
+          <div class="diff-line ctx"><span class="diff-line-no">8</span>   "logical_owners": {</div>
+          <div class="diff-line ctx"><span class="diff-line-no">9</span>     "src/billing/": "billing",</div>
+          <div class="diff-line ctx"><span class="diff-line-no">10</span>     "src/runtime/": "runtime",</div>
+          <div class="diff-line add"><span class="diff-line-no">11</span>+    "src/api/": "api",</div>
+          <div class="diff-line add"><span class="diff-line-no">12</span>+    "src/ui/": "ui"</div>
+          <div class="diff-line ctx"><span class="diff-line-no">13</span>   },</div>
+          <div class="diff-line ctx"><span class="diff-line-no">14</span>   "priority_rules": {</div>
+          <div class="diff-line add"><span class="diff-line-no">15</span>+    "double-charge|billing cron": "priority:p0",</div>
+          <div class="diff-line add"><span class="diff-line-no">16</span>+    "crash|nil|OOM": "priority:p0"</div>
+          <div class="diff-line ctx"><span class="diff-line-no">17</span>   }</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function switchView(mode) {
+      if (mode === 'rules') {
+        document.getElementById('rules-view').style.display = 'flex';
+        document.getElementById('diff-view').style.display = 'none';
+        document.getElementById('tab-btn-rules').classList.add('active');
+        document.getElementById('tab-btn-diff').classList.remove('active');
+        document.getElementById('content-icon').innerText = '≡';
+        document.getElementById('content-title').innerText = 'Playbook v3 (Active) • Compiled Grounding Knowledge';
+      } else {
+        document.getElementById('rules-view').style.display = 'none';
+        document.getElementById('diff-view').style.display = 'block';
+        document.getElementById('tab-btn-rules').classList.remove('active');
+        document.getElementById('tab-btn-diff').classList.add('active');
+        document.getElementById('content-icon').innerText = '±';
+        document.getElementById('content-title').innerText = 'Playbook Diff • Version v2 vs. v3 (+ search-before-list-all)';
+      }
+    }
+
+    function selectVersion(v) {
+      document.querySelectorAll('.version-item').forEach(i => i.classList.remove('selected'));
+      event.currentTarget.classList.add('selected');
+      if (v === 'v4') {
+        document.getElementById('content-title').innerText = 'Playbook v4-candidate (Pending Promotion)';
+      } else if (v === 'v3') {
+        document.getElementById('content-title').innerText = 'Playbook v3 (Active) • Compiled Grounding Knowledge';
+      } else {
+        document.getElementById('content-title').innerText = 'Playbook ' + v + ' (Historical Snapshot)';
+      }
+    }
+  </script>
+  <script>
+    window.addEventListener('keydown', (e) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+      if (e.key === '1') window.location.href = 'runs.html';
+      if (e.key === '2') window.location.href = 'challenge.html';
+      if (e.key === '3') window.location.href = 'trace.html';
+      if (e.key === '4') window.location.href = 'playbook.html';
+      if (e.key === '5') window.location.href = 'journal.html';
+      if (e.key === '6') window.location.href = 'promote.html';
+    });
+  </script>
+</body>
+</html>
