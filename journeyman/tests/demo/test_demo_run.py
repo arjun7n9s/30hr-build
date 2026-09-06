@@ -70,20 +70,20 @@ def test_holdout_not_scored_before_candidate(tmp_path: Path) -> None:
 def test_frozen_eval_counts() -> None:
     challenge = load_frozen_eval()
     assert challenge.repo == "arjun7n9s/journeyman-fixture"
-    assert len(challenge.dev) == 10
-    assert len(challenge.held_out) == 6
+    assert len(challenge.dev) == 14
+    assert len(challenge.held_out) == 7
     assert {case.task_type for case in challenge.dev} >= {"label", "duplicate", "owner", "summarize", "fix_pr"}
 
 
 def test_frozen_demo_offline_improves(tmp_path: Path) -> None:
     report = run_demo("frozen", work_root=tmp_path, offline=True)
     assert report.challenge_id == "frozen"
-    assert report.run1.n == 10
+    assert report.run1.n == 14
     assert report.run1.pass_rate < report.run_n.pass_rate
     assert report.promoted is True
     assert report.hold_prior is not None
     assert report.hold_candidate is not None
-    assert report.hold_candidate.n == 6
+    assert report.hold_candidate.n == 7
     assert all(split == "dev" for _, split in report.score_log if split != "holdout")
     assert report.report_path is not None and report.report_path.exists()
     assert report.ui_path is not None and report.ui_path.exists()
@@ -105,6 +105,9 @@ def test_frozen_demo_offline_improves(tmp_path: Path) -> None:
         rolled = rollback_demo(tmp_path)
         assert rolled.active == "weak-0"
         assert rolled.prior == report.pointer.active
+        challenge = load_frozen_eval()
+        p1 = {case.id for case, ok in zip(challenge.dev, report.run_n.passed, strict=True) if not ok}
+        assert {"dev-13", "dev-14"} <= p1, "hidden-rule DEV tasks fail until P1 mines them"
 
 
 def test_promote_requires_holdout(tmp_path: Path) -> None:

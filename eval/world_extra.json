@@ -1,0 +1,584 @@
+{
+  "issues": [
+    {
+      "key": "C01",
+      "number": 23,
+      "title": "List endpoint throws on missing Accept header",
+      "body": "Calling GET /items without Accept blows up.\n\nStack trace:\n  File \"src/api/routes.py\", line 18, in list_items\nTypeError: missing header",
+      "labels": [
+        {
+          "name": "type:bug"
+        },
+        {
+          "name": "area:api"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus"
+    },
+    {
+      "key": "C02",
+      "number": 24,
+      "title": "Charge preview dies when amount is zero",
+      "body": "Previewing a $0 charge raises.\n\nStack trace:\n  File \"src/billing/charge.py\", line 22, in preview\nValueError: amount",
+      "labels": [
+        {
+          "name": "type:bug"
+        },
+        {
+          "name": "area:billing"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus"
+    },
+    {
+      "key": "C03",
+      "number": 25,
+      "title": "Queue drain raises on empty batch",
+      "body": "Empty batch kills the loop.\n\nStack trace:\n  File \"src/runtime/worker.py\", line 40, in drain\nIndexError: empty batch",
+      "labels": [
+        {
+          "name": "type:bug"
+        },
+        {
+          "name": "area:runtime"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus"
+    },
+    {
+      "key": "C04",
+      "number": 26,
+      "title": "Settings form throws on empty name",
+      "body": "Saving a blank display name errors.\n\nStack trace:\n  File \"src/ui/app.tsx\", line 27, in saveName\nTypeError: name is required",
+      "labels": [
+        {
+          "name": "type:bug"
+        },
+        {
+          "name": "area:ui"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus"
+    },
+    {
+      "key": "C05",
+      "number": 27,
+      "title": "Worker crash on canceled deadline",
+      "body": "A crash occurs when the deadline is gone.\n\nStack trace:\n  File \"src/runtime/worker.py\", line 31, in handle\nAttributeError: nil context",
+      "labels": [
+        {
+          "name": "type:bug"
+        },
+        {
+          "name": "area:runtime"
+        },
+        {
+          "name": "priority:p0"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus"
+    },
+    {
+      "key": "C06",
+      "number": 28,
+      "title": "Handler nil context on replay",
+      "body": "Replay hits a nil context.\n\nStack trace:\n  File \"src/runtime/worker.py\", line 55, in replay\nAttributeError: nil context has no deadline",
+      "labels": [
+        {
+          "name": "type:bug"
+        },
+        {
+          "name": "area:runtime"
+        },
+        {
+          "name": "priority:p0"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus"
+    },
+    {
+      "key": "C07",
+      "number": 29,
+      "title": "Invoice render OOM on large PDF",
+      "body": "Huge invoices OOM the renderer.\n\nStack trace:\n  File \"src/billing/invoice.py\", line 70, in render\nMemoryError: OOM while writing pages",
+      "labels": [
+        {
+          "name": "type:bug"
+        },
+        {
+          "name": "area:billing"
+        },
+        {
+          "name": "priority:p0"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus"
+    },
+    {
+      "key": "C08",
+      "number": 30,
+      "title": "Add refund receipt download",
+      "body": "Feature request: download a refund receipt from the billing screen.\nCode lives in src/billing/invoice.py.",
+      "labels": [
+        {
+          "name": "type:feat"
+        },
+        {
+          "name": "area:billing"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus"
+    },
+    {
+      "key": "C09",
+      "number": 31,
+      "title": "Add request-id echo on errors",
+      "body": "Feature request: echo X-Request-Id on 4xx from src/api/routes.py.",
+      "labels": [
+        {
+          "name": "type:feat"
+        },
+        {
+          "name": "area:api"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus"
+    },
+    {
+      "key": "C10",
+      "number": 32,
+      "title": "Add compact density toggle",
+      "body": "Feature request: a compact density toggle in settings. Code lives in src/ui/app.tsx.",
+      "labels": [
+        {
+          "name": "type:feat"
+        },
+        {
+          "name": "area:ui"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus"
+    },
+    {
+      "key": "C11",
+      "number": 33,
+      "title": "README typo in auth section",
+      "body": "Typo in the README auth section: `autorization` should be `authorization`.",
+      "labels": [
+        {
+          "name": "type:docs"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus"
+    },
+    {
+      "key": "C12",
+      "number": 34,
+      "title": "Typo in contributing license line",
+      "body": "Typo in CONTRIBUTING.md: `licenced` should be `licensed`.",
+      "labels": [
+        {
+          "name": "type:docs"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus"
+    },
+    {
+      "key": "C13",
+      "number": 35,
+      "title": "README missing uninstall notes",
+      "body": "Docs gap: the README never says how to uninstall the CLI.",
+      "labels": [
+        {
+          "name": "type:docs"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus"
+    },
+    {
+      "key": "C14",
+      "number": 36,
+      "title": "Document pagination in OpenAPI",
+      "body": "Docs gap: the OpenAPI spec in src/api/routes.py omits pagination headers.",
+      "labels": [
+        {
+          "name": "type:docs"
+        },
+        {
+          "name": "area:api"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus"
+    },
+    {
+      "key": "C15",
+      "number": 37,
+      "title": "API crash on oversized JSON",
+      "body": "A crash occurs when the body is huge.\n\nStack trace:\n  File \"src/api/routes.py\", line 88, in parse\nMemoryError: OOM decoding JSON",
+      "labels": [
+        {
+          "name": "type:bug"
+        },
+        {
+          "name": "area:api"
+        },
+        {
+          "name": "priority:p0"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus"
+    },
+    {
+      "key": "C16",
+      "number": 38,
+      "title": "Add worker dry-run flag",
+      "body": "Feature request: a dry-run flag for the runtime worker. Code lives in src/runtime/worker.py.",
+      "labels": [
+        {
+          "name": "type:feat"
+        },
+        {
+          "name": "area:runtime"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus"
+    },
+    {
+      "key": "C17",
+      "number": 39,
+      "title": "README typo in billing env table",
+      "body": "Typo in the README: `BILLING_TOKN` should be `BILLING_TOKEN`.",
+      "labels": [
+        {
+          "name": "type:docs"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus"
+    },
+    {
+      "key": "C18",
+      "number": 40,
+      "title": "Idempotency key rejected on replay",
+      "body": "Replaying a charge fails the key check.\n\nStack trace:\n  File \"src/billing/charge.py\", line 81, in replay\nAssertionError: unknown key",
+      "labels": [
+        {
+          "name": "type:bug"
+        },
+        {
+          "name": "area:billing"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus"
+    },
+    {
+      "key": "C19",
+      "number": 41,
+      "title": "Worker OOM while paging history",
+      "body": "Paging job history OOMs after a long night.\n\nStack trace:\n  File \"src/runtime/worker.py\", line 99, in page\nMemoryError: OOM while paging",
+      "labels": [
+        {
+          "name": "type:bug"
+        },
+        {
+          "name": "area:runtime"
+        },
+        {
+          "name": "priority:p0"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus"
+    },
+    {
+      "key": "C20",
+      "number": 42,
+      "title": "Document 429 examples in OpenAPI",
+      "body": "Docs gap: src/api/routes.py OpenAPI has no 429 examples.",
+      "labels": [
+        {
+          "name": "type:docs"
+        },
+        {
+          "name": "area:api"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus"
+    },
+    {
+      "key": "H01",
+      "number": 43,
+      "title": "Checkout is flaky on the first retry",
+      "body": "The first retry of checkout sometimes succeeds and sometimes does not. No dump attached.",
+      "labels": [
+        {
+          "name": "type:bug"
+        },
+        {
+          "name": "priority:p1"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus-hidden"
+    },
+    {
+      "key": "H02",
+      "number": 44,
+      "title": "Login is flaky after password reset",
+      "body": "After a reset, login works only on some attempts. Intermittent; no dump.",
+      "labels": [
+        {
+          "name": "type:bug"
+        },
+        {
+          "name": "priority:p1"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus-hidden"
+    },
+    {
+      "key": "H03",
+      "number": 45,
+      "title": "Cart total is flaky with two discounts",
+      "body": "Two stacked discounts sometimes compute a different total. Intermittent.",
+      "labels": [
+        {
+          "name": "type:bug"
+        },
+        {
+          "name": "priority:p1"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus-hidden"
+    },
+    {
+      "key": "H04",
+      "number": 46,
+      "title": "Email send is flaky from the digest job",
+      "body": "Digest mail goes out on some runs and is skipped on others. Intermittent.",
+      "labels": [
+        {
+          "name": "type:bug"
+        },
+        {
+          "name": "priority:p1"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus-hidden"
+    },
+    {
+      "key": "H05",
+      "number": 47,
+      "title": "Session refresh is flaky near expiry",
+      "body": "Tokens near expiry sometimes refresh and sometimes do not. Intermittent.",
+      "labels": [
+        {
+          "name": "type:bug"
+        },
+        {
+          "name": "priority:p1"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus-hidden"
+    },
+    {
+      "key": "H06",
+      "number": 48,
+      "title": "Inventory count is flaky after restock",
+      "body": "Restock sometimes leaves the count one short. Intermittent, no dump.",
+      "labels": [
+        {
+          "name": "type:bug"
+        },
+        {
+          "name": "priority:p1"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus-hidden"
+    },
+    {
+      "key": "H07",
+      "number": 49,
+      "title": "CSV import is flaky on blank rows",
+      "body": "Blank rows sometimes drop the whole import. Intermittent.",
+      "labels": [
+        {
+          "name": "type:bug"
+        },
+        {
+          "name": "priority:p1"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus-hidden"
+    },
+    {
+      "key": "H08",
+      "number": 50,
+      "title": "Cache warm is flaky after deploy",
+      "body": "First requests after deploy sometimes miss a warm cache. Intermittent.",
+      "labels": [
+        {
+          "name": "type:bug"
+        },
+        {
+          "name": "priority:p1"
+        },
+        {
+          "name": "corpus:mine"
+        }
+      ],
+      "state": "open",
+      "role": "corpus-hidden"
+    },
+    {
+      "key": "U01",
+      "number": 51,
+      "title": "Health probe throws on missing host",
+      "body": "Probe without Host raises.\n\nStack trace:\n  File \"src/api/handler.py\", line 9, in probe\nKeyError: host",
+      "labels": [],
+      "state": "open",
+      "role": "eval-dev"
+    },
+    {
+      "key": "U02",
+      "number": 52,
+      "title": "Add keyboard shortcut for save",
+      "body": "Feature request: a save shortcut on the settings screen. Code lives in src/ui/app.tsx.",
+      "labels": [],
+      "state": "open",
+      "role": "eval-dev"
+    },
+    {
+      "key": "U03",
+      "number": 53,
+      "title": "Export job is flaky at midnight",
+      "body": "The midnight export sometimes writes an empty file. Intermittent, no dump.",
+      "labels": [],
+      "state": "open",
+      "role": "eval-dev-hidden"
+    },
+    {
+      "key": "U04",
+      "number": 54,
+      "title": "Webhook ack is flaky under load",
+      "body": "Acks drop on some loaded runs and succeed on others. Intermittent, no dump.",
+      "labels": [],
+      "state": "open",
+      "role": "eval-dev-hidden"
+    },
+    {
+      "key": "U05",
+      "number": 55,
+      "title": "Search index is flaky after reindex",
+      "body": "After reindex, some queries miss rows that are present. Intermittent, no dump.",
+      "labels": [],
+      "state": "open",
+      "role": "eval-hold-hidden"
+    }
+  ]
+}

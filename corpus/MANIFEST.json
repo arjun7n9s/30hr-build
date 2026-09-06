@@ -1,0 +1,580 @@
+{
+  "repo": "arjun7n9s/journeyman-fixture",
+  "soil": "P1 mining. Not the promote signal. Not sealed hold-out training.",
+  "marker": "issues labeled corpus:mine are the labeled mining corpus",
+  "hidden": "builders only: see corpus/HIDDEN.md \u2014 never copy into CONTRIBUTING",
+  "counts": {
+    "labeled_documented": 20,
+    "labeled_hidden": 8,
+    "unlabeled_eval": 5
+  },
+  "expects_p1": [
+    "dev-13",
+    "dev-14",
+    "hold-07"
+  ],
+  "examples": [
+    {
+      "id": "C01",
+      "ref": "issue:23",
+      "github_number": 23,
+      "title": "List endpoint throws on missing Accept header",
+      "role": "corpus",
+      "convention": "stack-trace",
+      "intended_labels": [
+        "type:bug",
+        "area:api"
+      ],
+      "owner": "api",
+      "contributing_ref": "CONTRIBUTING.md#stack-trace",
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "C02",
+      "ref": "issue:24",
+      "github_number": 24,
+      "title": "Charge preview dies when amount is zero",
+      "role": "corpus",
+      "convention": "stack-trace",
+      "intended_labels": [
+        "type:bug",
+        "area:billing"
+      ],
+      "owner": "billing",
+      "contributing_ref": "CONTRIBUTING.md#stack-trace",
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "C03",
+      "ref": "issue:25",
+      "github_number": 25,
+      "title": "Queue drain raises on empty batch",
+      "role": "corpus",
+      "convention": "stack-trace",
+      "intended_labels": [
+        "type:bug",
+        "area:runtime"
+      ],
+      "owner": "runtime",
+      "contributing_ref": "CONTRIBUTING.md#stack-trace",
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "C04",
+      "ref": "issue:26",
+      "github_number": 26,
+      "title": "Settings form throws on empty name",
+      "role": "corpus",
+      "convention": "stack-trace",
+      "intended_labels": [
+        "type:bug",
+        "area:ui"
+      ],
+      "owner": "ui",
+      "contributing_ref": "CONTRIBUTING.md#stack-trace",
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "C05",
+      "ref": "issue:27",
+      "github_number": 27,
+      "title": "Worker crash on canceled deadline",
+      "role": "corpus",
+      "convention": "p0-crash",
+      "intended_labels": [
+        "type:bug",
+        "area:runtime",
+        "priority:p0"
+      ],
+      "owner": "runtime",
+      "contributing_ref": "CONTRIBUTING.md#p0",
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "C06",
+      "ref": "issue:28",
+      "github_number": 28,
+      "title": "Handler nil context on replay",
+      "role": "corpus",
+      "convention": "p0-nil",
+      "intended_labels": [
+        "type:bug",
+        "area:runtime",
+        "priority:p0"
+      ],
+      "owner": "runtime",
+      "contributing_ref": "CONTRIBUTING.md#p0",
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "C07",
+      "ref": "issue:29",
+      "github_number": 29,
+      "title": "Invoice render OOM on large PDF",
+      "role": "corpus",
+      "convention": "p0-oom",
+      "intended_labels": [
+        "type:bug",
+        "area:billing",
+        "priority:p0"
+      ],
+      "owner": "billing",
+      "contributing_ref": "CONTRIBUTING.md#p0",
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "C08",
+      "ref": "issue:30",
+      "github_number": 30,
+      "title": "Add refund receipt download",
+      "role": "corpus",
+      "convention": "feat",
+      "intended_labels": [
+        "type:feat",
+        "area:billing"
+      ],
+      "owner": "billing",
+      "contributing_ref": "CONTRIBUTING.md#feat",
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "C09",
+      "ref": "issue:31",
+      "github_number": 31,
+      "title": "Add request-id echo on errors",
+      "role": "corpus",
+      "convention": "feat",
+      "intended_labels": [
+        "type:feat",
+        "area:api"
+      ],
+      "owner": "api",
+      "contributing_ref": "CONTRIBUTING.md#feat",
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "C10",
+      "ref": "issue:32",
+      "github_number": 32,
+      "title": "Add compact density toggle",
+      "role": "corpus",
+      "convention": "feat",
+      "intended_labels": [
+        "type:feat",
+        "area:ui"
+      ],
+      "owner": "ui",
+      "contributing_ref": "CONTRIBUTING.md#feat",
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "C11",
+      "ref": "issue:33",
+      "github_number": 33,
+      "title": "README typo in auth section",
+      "role": "corpus",
+      "convention": "docs",
+      "intended_labels": [
+        "type:docs"
+      ],
+      "owner": null,
+      "contributing_ref": "CONTRIBUTING.md#docs",
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "C12",
+      "ref": "issue:34",
+      "github_number": 34,
+      "title": "Typo in contributing license line",
+      "role": "corpus",
+      "convention": "docs",
+      "intended_labels": [
+        "type:docs"
+      ],
+      "owner": null,
+      "contributing_ref": "CONTRIBUTING.md#docs",
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "C13",
+      "ref": "issue:35",
+      "github_number": 35,
+      "title": "README missing uninstall notes",
+      "role": "corpus",
+      "convention": "docs",
+      "intended_labels": [
+        "type:docs"
+      ],
+      "owner": null,
+      "contributing_ref": "CONTRIBUTING.md#docs",
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "C14",
+      "ref": "issue:36",
+      "github_number": 36,
+      "title": "Document pagination in OpenAPI",
+      "role": "corpus",
+      "convention": "docs-area",
+      "intended_labels": [
+        "type:docs",
+        "area:api"
+      ],
+      "owner": "api",
+      "contributing_ref": "CONTRIBUTING.md#docs",
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "C15",
+      "ref": "issue:37",
+      "github_number": 37,
+      "title": "API crash on oversized JSON",
+      "role": "corpus",
+      "convention": "p0-crash",
+      "intended_labels": [
+        "type:bug",
+        "area:api",
+        "priority:p0"
+      ],
+      "owner": "api",
+      "contributing_ref": "CONTRIBUTING.md#p0",
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "C16",
+      "ref": "issue:38",
+      "github_number": 38,
+      "title": "Add worker dry-run flag",
+      "role": "corpus",
+      "convention": "feat",
+      "intended_labels": [
+        "type:feat",
+        "area:runtime"
+      ],
+      "owner": "runtime",
+      "contributing_ref": "CONTRIBUTING.md#feat",
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "C17",
+      "ref": "issue:39",
+      "github_number": 39,
+      "title": "README typo in billing env table",
+      "role": "corpus",
+      "convention": "docs",
+      "intended_labels": [
+        "type:docs"
+      ],
+      "owner": null,
+      "contributing_ref": "CONTRIBUTING.md#docs",
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "C18",
+      "ref": "issue:40",
+      "github_number": 40,
+      "title": "Idempotency key rejected on replay",
+      "role": "corpus",
+      "convention": "stack-trace",
+      "intended_labels": [
+        "type:bug",
+        "area:billing"
+      ],
+      "owner": "billing",
+      "contributing_ref": "CONTRIBUTING.md#stack-trace",
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "C19",
+      "ref": "issue:41",
+      "github_number": 41,
+      "title": "Worker OOM while paging history",
+      "role": "corpus",
+      "convention": "p0-oom",
+      "intended_labels": [
+        "type:bug",
+        "area:runtime",
+        "priority:p0"
+      ],
+      "owner": "runtime",
+      "contributing_ref": "CONTRIBUTING.md#p0",
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "C20",
+      "ref": "issue:42",
+      "github_number": 42,
+      "title": "Document 429 examples in OpenAPI",
+      "role": "corpus",
+      "convention": "docs-area",
+      "intended_labels": [
+        "type:docs",
+        "area:api"
+      ],
+      "owner": "api",
+      "contributing_ref": "CONTRIBUTING.md#docs",
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "H01",
+      "ref": "issue:43",
+      "github_number": 43,
+      "title": "Checkout is flaky on the first retry",
+      "role": "corpus-hidden",
+      "convention": "hidden",
+      "intended_labels": [
+        "type:bug",
+        "priority:p1"
+      ],
+      "owner": null,
+      "contributing_ref": null,
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "H02",
+      "ref": "issue:44",
+      "github_number": 44,
+      "title": "Login is flaky after password reset",
+      "role": "corpus-hidden",
+      "convention": "hidden",
+      "intended_labels": [
+        "type:bug",
+        "priority:p1"
+      ],
+      "owner": null,
+      "contributing_ref": null,
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "H03",
+      "ref": "issue:45",
+      "github_number": 45,
+      "title": "Cart total is flaky with two discounts",
+      "role": "corpus-hidden",
+      "convention": "hidden",
+      "intended_labels": [
+        "type:bug",
+        "priority:p1"
+      ],
+      "owner": null,
+      "contributing_ref": null,
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "H04",
+      "ref": "issue:46",
+      "github_number": 46,
+      "title": "Email send is flaky from the digest job",
+      "role": "corpus-hidden",
+      "convention": "hidden",
+      "intended_labels": [
+        "type:bug",
+        "priority:p1"
+      ],
+      "owner": null,
+      "contributing_ref": null,
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "H05",
+      "ref": "issue:47",
+      "github_number": 47,
+      "title": "Session refresh is flaky near expiry",
+      "role": "corpus-hidden",
+      "convention": "hidden",
+      "intended_labels": [
+        "type:bug",
+        "priority:p1"
+      ],
+      "owner": null,
+      "contributing_ref": null,
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "H06",
+      "ref": "issue:48",
+      "github_number": 48,
+      "title": "Inventory count is flaky after restock",
+      "role": "corpus-hidden",
+      "convention": "hidden",
+      "intended_labels": [
+        "type:bug",
+        "priority:p1"
+      ],
+      "owner": null,
+      "contributing_ref": null,
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "H07",
+      "ref": "issue:49",
+      "github_number": 49,
+      "title": "CSV import is flaky on blank rows",
+      "role": "corpus-hidden",
+      "convention": "hidden",
+      "intended_labels": [
+        "type:bug",
+        "priority:p1"
+      ],
+      "owner": null,
+      "contributing_ref": null,
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "H08",
+      "ref": "issue:50",
+      "github_number": 50,
+      "title": "Cache warm is flaky after deploy",
+      "role": "corpus-hidden",
+      "convention": "hidden",
+      "intended_labels": [
+        "type:bug",
+        "priority:p1"
+      ],
+      "owner": null,
+      "contributing_ref": null,
+      "eval_id": null,
+      "expects_p1": false,
+      "labeled": true
+    },
+    {
+      "id": "U01",
+      "ref": "issue:51",
+      "github_number": 51,
+      "title": "Health probe throws on missing host",
+      "role": "eval-dev",
+      "convention": "stack-trace",
+      "intended_labels": [
+        "area:api",
+        "type:bug"
+      ],
+      "owner": "api",
+      "contributing_ref": "CONTRIBUTING.md#stack-trace",
+      "eval_id": "dev-11",
+      "expects_p1": false,
+      "labeled": false
+    },
+    {
+      "id": "U02",
+      "ref": "issue:52",
+      "github_number": 52,
+      "title": "Add keyboard shortcut for save",
+      "role": "eval-dev",
+      "convention": "feat",
+      "intended_labels": [
+        "area:ui",
+        "type:feat"
+      ],
+      "owner": "ui",
+      "contributing_ref": "CONTRIBUTING.md#feat",
+      "eval_id": "dev-12",
+      "expects_p1": false,
+      "labeled": false
+    },
+    {
+      "id": "U03",
+      "ref": "issue:53",
+      "github_number": 53,
+      "title": "Export job is flaky at midnight",
+      "role": "eval-dev-hidden",
+      "convention": "hidden",
+      "intended_labels": [
+        "priority:p1",
+        "type:bug"
+      ],
+      "owner": null,
+      "contributing_ref": null,
+      "eval_id": "dev-13",
+      "expects_p1": true,
+      "labeled": false
+    },
+    {
+      "id": "U04",
+      "ref": "issue:54",
+      "github_number": 54,
+      "title": "Webhook ack is flaky under load",
+      "role": "eval-dev-hidden",
+      "convention": "hidden",
+      "intended_labels": [
+        "priority:p1",
+        "type:bug"
+      ],
+      "owner": null,
+      "contributing_ref": null,
+      "eval_id": "dev-14",
+      "expects_p1": true,
+      "labeled": false
+    },
+    {
+      "id": "U05",
+      "ref": "issue:55",
+      "github_number": 55,
+      "title": "Search index is flaky after reindex",
+      "role": "eval-hold-hidden",
+      "convention": "hidden",
+      "intended_labels": [
+        "priority:p1",
+        "type:bug"
+      ],
+      "owner": null,
+      "contributing_ref": null,
+      "eval_id": "hold-07",
+      "expects_p1": true,
+      "labeled": false
+    }
+  ]
+}

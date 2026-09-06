@@ -183,6 +183,78 @@
       "score": {
         "accuracy": "exact"
       }
+    },
+    {
+      "id": "dev-11",
+      "type": "label",
+      "prompt": "What labels should this issue get, using this repo's taxonomy?",
+      "github": {
+        "issue_key": "U01",
+        "issue_number": 51
+      },
+      "expected": {
+        "labels": [
+          "area:api",
+          "type:bug"
+        ]
+      },
+      "score": {
+        "accuracy": "exact_set"
+      }
+    },
+    {
+      "id": "dev-12",
+      "type": "label",
+      "prompt": "What labels should this issue get, using this repo's taxonomy?",
+      "github": {
+        "issue_key": "U02",
+        "issue_number": 52
+      },
+      "expected": {
+        "labels": [
+          "area:ui",
+          "type:feat"
+        ]
+      },
+      "score": {
+        "accuracy": "exact_set"
+      }
+    },
+    {
+      "id": "dev-13",
+      "type": "label",
+      "prompt": "What labels should this issue get, using this repo's taxonomy?",
+      "github": {
+        "issue_key": "U03",
+        "issue_number": 53
+      },
+      "expected": {
+        "labels": [
+          "priority:p1",
+          "type:bug"
+        ]
+      },
+      "score": {
+        "accuracy": "exact_set"
+      }
+    },
+    {
+      "id": "dev-14",
+      "type": "label",
+      "prompt": "What labels should this issue get, using this repo's taxonomy?",
+      "github": {
+        "issue_key": "U04",
+        "issue_number": 54
+      },
+      "expected": {
+        "labels": [
+          "priority:p1",
+          "type:bug"
+        ]
+      },
+      "score": {
+        "accuracy": "exact_set"
+      }
     }
   ]
 }

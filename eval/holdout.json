@@ -122,6 +122,24 @@
       "score": {
         "accuracy": "required_keys"
       }
+    },
+    {
+      "id": "hold-07",
+      "type": "label",
+      "prompt": "What labels should this issue get, using this repo's taxonomy?",
+      "github": {
+        "issue_key": "U05",
+        "issue_number": 55
+      },
+      "expected": {
+        "labels": [
+          "priority:p1",
+          "type:bug"
+        ]
+      },
+      "score": {
+        "accuracy": "exact_set"
+      }
     }
   ]
 }

@@ -138,9 +138,11 @@ ISSUE_BODIES: dict[str, str] = {
     ),
     "I18": "Docs gap: rate limit headers are not described anywhere in the README.",
 }
-"""Bodies carry the signals CONTRIBUTING describes. Labels stay off the issues:
-eval targets must be unlabeled in the workspace or the answer is readable from
-the tool response."""
+"""Bodies carry the signals CONTRIBUTING describes.
+
+I1–I18 and unlabeled eval extras stay unlabeled in this snapshot. Labeled
+`corpus:mine` rows come from eval/world_extra.json and are mining soil only.
+"""
 
 
 def repo_root() -> Path:
@@ -187,6 +189,15 @@ def load_frozen_eval() -> Challenge:
     )
 
 
+def _world_extra() -> list[dict[str, Any]]:
+    """Labeled corpus + unlabeled eval extras. Lives in JSON so agent Python stays clean."""
+    path = repo_root() / "eval" / "world_extra.json"
+    if not path.exists():
+        return []
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    return list(payload.get("issues") or [])
+
+
 def build_world(numbers: dict[str, Any] | None = None) -> dict[str, Any]:
     issue_nums = dict((numbers or {}).get("issues") or {})
     pr_nums = dict((numbers or {}).get("prs") or {})
@@ -201,6 +212,19 @@ def build_world(numbers: dict[str, Any] | None = None) -> dict[str, Any]:
                 "body": ISSUE_BODIES.get(key, title),
                 "labels": [],
                 "state": "open",
+            }
+        )
+    for row in _world_extra():
+        if not isinstance(row, dict):
+            continue
+        issues.append(
+            {
+                "key": str(row.get("key") or ""),
+                "number": int(row.get("number") or 0),
+                "title": str(row.get("title") or ""),
+                "body": str(row.get("body") or ""),
+                "labels": list(row.get("labels") or []),
+                "state": str(row.get("state") or "open"),
             }
         )
     pulls = []
@@ -230,6 +254,7 @@ def build_world(numbers: dict[str, Any] | None = None) -> dict[str, Any]:
         {"path": "src/ui/app.tsx", "content": "// ui\n"},
         {"path": "src/api/handler.py", "content": "# api\n"},
         {"path": "src/retry.py", "content": "MAX_RETRY = 3\n"},
+        {"path": "corpus/README.md", "content": "Labeled mining soil is issues with label corpus:mine. See corpus/MANIFEST.json.\n"},
     ]
     labels = [
         {"name": "area:api"},
@@ -240,6 +265,8 @@ def build_world(numbers: dict[str, Any] | None = None) -> dict[str, Any]:
         {"name": "type:feat"},
         {"name": "type:docs"},
         {"name": "priority:p0"},
+        {"name": "priority:p1"},
+        {"name": "corpus:mine"},
     ]
     return {
         "repo": REPO,
