@@ -16,7 +16,7 @@ python -m journeyman.demo.run --challenge frozen --mode live
 | Product | `journeyman/` (`journeyman.contracts` = only shapes) |
 | Task family | repo triage / grounding |
 | World | `arjun7n9s/journeyman-fixture` |
-| Eval | `eval/dev.json` (10) + `eval/holdout.json` (6) |
+| Eval | `eval/dev.json` + `eval/holdout.json` (frozen; hold-out sealed until promote) |
 | App | official GitHub MCP readonly `https://api.githubcopilot.com/mcp/readonly` |
 | Cheap brain | TensorMux `https://api.tensormux.com/v1` / `glm-4-7-flash` / `TMX_API_KEY` |
 | Escalate | same hop → `gpt-5-nano` / `https://api.openai.com/v1` / `OPENAI_API_KEY` after a **logged** quality-gate miss |

@@ -3,34 +3,27 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Journeyman — legacy gather UI/mockups. Product runtime is journeyman/ (Python).",
+  "description": "Journeyman UI — artifact reader over the Python runtime.",
   "scripts": {
     "dev": "concurrently -k \"npm:dev:api\" \"npm:dev:web\"",
     "dev:api": "python -c \"import os,sys; sys.path.insert(0,'journeyman/src'); os.environ.setdefault('PORT','8787'); os.environ.setdefault('JOURNEYMAN_WORK_ROOT','.tmp-ui'); from journeyman.server.__main__ import main; main()\"",
     "dev:web": "vite",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
-    "start": "tsx src/server.ts",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "vitest run tests/reportView.test.ts"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.20.0",
-    "express": "^5.1.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "yaml": "^2.8.0"
+    "react-dom": "^19.1.0"
   },
   "devDependencies": {
-    "@types/express": "^5.0.3",
     "@types/node": "^22.15.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^4.5.0",
     "concurrently": "^9.1.2",
-    "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vite": "^6.3.5",
     "vitest": "^3.2.0"
