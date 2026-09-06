@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Journeyman // Runs Scoreboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand-section">
+      <a href="runs.html" class="brand-badge">
+        <div class="brand-symbol">J</div>
+        <div class="brand-title">
+          JOURNEYMAN
+          <span class="version-tag">APPRENTICE AGENT</span>
+        </div>
+      </a>
+      <div class="repo-pill">
+        <span class="dot"></span>
+        <span>arjun7n9s/journeyman-fixture</span>
+      </div>
+    </div>
+
+        <nav class="app-nav">
+      <a href="runs.html" class="nav-link active"><span class="nav-shortcut">1</span> Runs Scoreboard</a><a href="challenge.html" class="nav-link"><span class="nav-shortcut">2</span> Challenge</a><a href="trace.html" class="nav-link"><span class="nav-shortcut">3</span> Trace Cockpit</a><a href="playbook.html" class="nav-link"><span class="nav-shortcut">4</span> Playbook Viewer</a><a href="journal.html" class="nav-link"><span class="nav-shortcut">5</span> Journal</a><a href="promote.html" class="nav-link"><span class="nav-shortcut">6</span> Promote / Rollback</a>
+    </nav>
+
+    <div class="header-meta">
+      <div class="partner-chip">
+        <span style="color:#f472b6;">TMX</span>
+        <span>glm-4-7-flash</span>
+      </div>
+      <div class="partner-chip">
+        <span style="color:#38bdf8;">Neatlogs</span>
+        <span>Trace SoR</span>
+      </div>
+      <div class="status-badge-active">
+        <span style="width:6px;height:6px;background:#38bdf8;border-radius:50%;display:inline-block;"></span>
+        <span>ACTIVE: v3 (promoted)</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-container">
+    <!-- HEADLINE SCOREBOARD (The 3-Second Judge Claim) -->
+    <section class="scoreboard-banner">
+      <div class="scoreboard-top">
+        <div class="scoreboard-title-group">
+          <h1 class="scoreboard-headline">Apprentice Grounding Scoreboard &bull; v0 vs Latest</h1>
+          <span class="learning-claim-tag">&check; LEARNING VERIFIED: v0 BASELINE &rarr; v3 PROMOTED</span>
+        </div>
+        <div class="scoreboard-runtime-note">
+          Automated Agent Engineering &bull; GitHub MCP Readonly &bull; Sealed Test Suite
+        </div>
+      </div>
+
+      <div class="metrics-grid">
+        <!-- Metric 1: Accuracy -->
+        <div class="metric-card">
+          <div class="metric-header">
+            <span>Accuracy (Exact Match)</span>
+            <span class="metric-delta positive">+80.0% Gain</span>
+          </div>
+          <div class="metric-values">
+            <span class="metric-now">100.0%</span>
+            <span class="metric-baseline"><span class="baseline-val">20.0%</span> (v0)</span>
+          </div>
+          <div class="metric-subtext">
+            <span>DEV Split: 10/10 tasks exact match</span>
+            <span style="color: var(--split-holdout); font-family: var(--font-mono); font-weight: 600;">Hold-out: 83.3% (5/6)</span>
+          </div>
+        </div>
+
+        <!-- Metric 2: Cost -->
+        <div class="metric-card">
+          <div class="metric-header">
+            <span>Cost per Triage</span>
+            <span class="metric-delta positive">-73% Tokens</span>
+          </div>
+          <div class="metric-values">
+            <span class="metric-now">2.1 tools</span>
+            <span class="metric-baseline"><span class="baseline-val">8.4 tools</span> (v0)</span>
+          </div>
+          <div class="metric-subtext">
+            <span>Avg: 3,820 tokens ($0.007)</span>
+            <span style="color: var(--status-fail); font-family: var(--font-mono);">v0: 14,250 tok ($0.028)</span>
+          </div>
+        </div>
+
+        <!-- Metric 3: Speed -->
+        <div class="metric-card">
+          <div class="metric-header">
+            <span>Speed (Wall Latency)</span>
+            <span class="metric-delta positive">-78% Latency</span>
+          </div>
+          <div class="metric-values">
+            <span class="metric-now">1,080 ms</span>
+            <span class="metric-baseline"><span class="baseline-val">4,850 ms</span> (v0)</span>
+          </div>
+          <div class="metric-subtext">
+            <span>P95: 1,320 ms &bull; P50: 980 ms</span>
+            <span style="color: var(--text-muted); font-family: var(--font-mono);">Min: 640 ms</span>
+          </div>
+        </div>
+
+        <!-- Split Isolation Card -->
+        <div class="isolation-card">
+          <div class="isolation-title">
+            <span>&#128274; SEALED HOLD-OUT PROTOCOL</span>
+          </div>
+          <p class="isolation-desc">
+            The 6 hold-out tasks are frozen. Traces are quarantined and <strong>NEVER used to train or modify</strong> the playbook. Evaluated only at promote.
+          </p>
+          <div class="isolation-stats">
+            <span>DEV: 10 tasks</span>
+            <span>HOLD-OUT: 6 sealed</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FILTER & CONTROLS -->
+    <div class="controls-bar">
+      <div class="filter-group">
+        <span style="font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-right: 4px;">SPLIT:</span>
+        <button class="filter-btn active" id="btn-split-all" onclick="filterTable('all')">All Runs (7)</button>
+        <button class="filter-btn dev-filter" id="btn-split-dev" onclick="filterTable('dev')">DEV Split (10 tasks)</button>
+        <button class="filter-btn holdout-filter" id="btn-split-holdout" onclick="filterTable('holdout')">&#128274; HOLD-OUT (6 tasks sealed)</button>
+      </div>
+
+      <div class="filter-group">
+        <span style="font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-right: 4px;">VERSION:</span>
+        <button class="filter-btn active">All</button>
+        <button class="filter-btn">v3 Active</button>
+        <button class="filter-btn">v4 Cand</button>
+        <button class="filter-btn">v0 Baseline</button>
+      </div>
+
+      <div class="search-input-wrap">
+        <span class="search-icon">&telrec;</span>
+        <input type="text" class="search-input" id="table-search" placeholder="Filter runs by ID or label..." onkeyup="searchTable()">
+      </div>
+    </div>
+
+    <!-- RUNS TABLE -->
+    <div class="table-container">
+      <table class="data-table" id="runs-table">
+        <thead>
+          <tr>
+            <th>Run ID</th>
+            <th>Playbook Version</th>
+            <th>Split</th>
+            <th>Accuracy</th>
+            <th>Tool Calls</th>
+            <th>Cost (Tokens / $)</th>
+            <th>Speed (ms)</th>
+            <th>Playbook Hits</th>
+            <th>Trigger / Reason</th>
+            <th>Trace Link</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Run 14: Candidate DEV -->
+          <tr onclick="location.href='trace.html?run=run-14'">
+            <td><span class="mono" style="color: var(--accent-cyan); font-weight: 600;">run-20260906-14</span></td>
+            <td><span class="badge badge-version cand">v4 (candidate)</span></td>
+            <td><span class="badge badge-dev">DEV (10)</span></td>
+            <td><span class="badge badge-pass">10/10 (100.0%)</span></td>
+            <td class="mono">1.9 calls</td>
+            <td class="mono">3,410 tok &bull; $0.006</td>
+            <td class="mono" style="color: var(--status-pass); font-weight: 600;">990 ms</td>
+            <td><span class="mono">10/10 (100%)</span></td>
+            <td style="color: var(--text-secondary);">Pre-promotion regression run</td>
+            <td><a href="trace.html?run=run-14" style="color: var(--accent-cyan); text-decoration: none;">Inspect &rarr;</a></td>
+          </tr>
+
+          <!-- Run 13: Candidate HOLD-OUT -->
+          <tr onclick="location.href='trace.html?run=run-13'">
+            <td><span class="mono" style="color: var(--split-holdout); font-weight: 600;">run-20260906-13</span></td>
+            <td><span class="badge badge-version cand">v4 (candidate)</span></td>
+            <td><span class="badge badge-holdout">&#128274; HOLD-OUT (6)</span></td>
+            <td><span class="badge badge-pass">5/6 (83.3%)</span></td>
+            <td class="mono">2.0 calls</td>
+            <td class="mono">3,620 tok &bull; $0.007</td>
+            <td class="mono">1,020 ms</td>
+            <td><span class="mono">5/6 (83%)</span></td>
+            <td style="color: var(--text-secondary);">Sealed hold-out audit gate</td>
+            <td><a href="trace.html?run=run-13" style="color: var(--accent-cyan); text-decoration: none;">Inspect &rarr;</a></td>
+          </tr>
+
+          <!-- Run 12: Active v3 DEV -->
+          <tr class="active-row" onclick="location.href='trace.html?run=run-12'">
+            <td><span class="mono" style="color: var(--accent-cyan); font-weight: 600;">run-20260906-12</span></td>
+            <td><span class="badge badge-version active">v3 (ACTIVE)</span></td>
+            <td><span class="badge badge-dev">DEV (10)</span></td>
+            <td><span class="badge badge-pass">10/10 (100.0%)</span></td>
+            <td class="mono">2.1 calls</td>
+            <td class="mono">3,820 tok &bull; $0.007</td>
+            <td class="mono" style="font-weight: 600;">1,080 ms</td>
+            <td><span class="mono">9/10 (90%)</span></td>
+            <td style="color: var(--text-secondary);">Active production benchmark</td>
+            <td><a href="trace.html?run=run-12" style="color: var(--accent-cyan); text-decoration: none; font-weight: 600;">Inspect &rarr;</a></td>
+          </tr>
+
+          <!-- Run 11: Active v3 HOLD-OUT -->
+          <tr onclick="location.href='trace.html?run=run-11'">
+            <td><span class="mono" style="color: var(--split-holdout); font-weight: 600;">run-20260906-11</span></td>
+            <td><span class="badge badge-version active">v3 (ACTIVE)</span></td>
+            <td><span class="badge badge-holdout">&#128274; HOLD-OUT (6)</span></td>
+            <td><span class="badge badge-pass">5/6 (83.3%)</span></td>
+            <td class="mono">2.2 calls</td>
+            <td class="mono">3,910 tok &bull; $0.008</td>
+            <td class="mono">1,140 ms</td>
+            <td><span class="mono">5/6 (83%)</span></td>
+            <td style="color: var(--text-secondary);">Promotion verification audit</td>
+            <td><a href="trace.html?run=run-11" style="color: var(--accent-cyan); text-decoration: none;">Inspect &rarr;</a></td>
+          </tr>
+
+          <!-- Run 09: v2 DEV -->
+          <tr onclick="location.href='trace.html?run=run-09'">
+            <td><span class="mono" style="color: var(--text-secondary);">run-20260906-09</span></td>
+            <td><span class="badge badge-version">v2</span></td>
+            <td><span class="badge badge-dev">DEV (10)</span></td>
+            <td><span class="badge" style="background:rgba(245, 158, 11, 0.15); color:#fde68a; border:1px solid rgba(245, 158, 11, 0.3);">7/10 (70.0%)</span></td>
+            <td class="mono">3.9 calls</td>
+            <td class="mono">6,840 tok &bull; $0.013</td>
+            <td class="mono">2,150 ms</td>
+            <td><span class="mono">6/10 (60%)</span></td>
+            <td style="color: var(--text-secondary);">Reflection iteration 2</td>
+            <td><a href="trace.html?run=run-09" style="color: var(--accent-cyan); text-decoration: none;">Inspect &rarr;</a></td>
+          </tr>
+
+          <!-- Run 06: v1 DEV -->
+          <tr onclick="location.href='trace.html?run=run-06'">
+            <td><span class="mono" style="color: var(--text-secondary);">run-20260906-06</span></td>
+            <td><span class="badge badge-version">v1</span></td>
+            <td><span class="badge badge-dev">DEV (10)</span></td>
+            <td><span class="badge badge-fail">4/10 (40.0%)</span></td>
+            <td class="mono">5.6 calls</td>
+            <td class="mono">9,920 tok &bull; $0.019</td>
+            <td class="mono">3,240 ms</td>
+            <td><span class="mono">2/10 (20%)</span></td>
+            <td style="color: var(--text-secondary);">Initial playbook merge</td>
+            <td><a href="trace.html?run=run-06" style="color: var(--accent-cyan); text-decoration: none;">Inspect &rarr;</a></td>
+          </tr>
+
+          <!-- Run 01: Baseline v0 DEV (COLD EXPLORE) -->
+          <tr class="baseline-row" onclick="location.href='trace.html?run=run-01'">
+            <td><span class="mono" style="color: var(--status-fail); font-weight: 600;">run-20260906-01</span></td>
+            <td><span class="badge badge-version v0">v0 (COLD BASELINE)</span></td>
+            <td><span class="badge badge-dev">DEV (10)</span></td>
+            <td><span class="badge badge-fail">2/10 (20.0%)</span></td>
+            <td class="mono" style="color: var(--status-fail); font-weight: 600;">8.4 calls</td>
+            <td class="mono" style="color: var(--status-fail); font-weight: 600;">14,250 tok &bull; $0.028</td>
+            <td class="mono" style="color: var(--status-fail); font-weight: 600;">4,850 ms</td>
+            <td><span class="mono" style="color: var(--status-fail);">0/10 (0% - No Playbook)</span></td>
+            <td style="color: var(--text-secondary);">Empty playbook zero-shot crawl</td>
+            <td><a href="trace.html?run=run-01" style="color: var(--status-fail); text-decoration: none; font-weight: 600;">Inspect Cold &rarr;</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TASK ACCURACY MATRIX (Braintrust / Promptfoo style) -->
+    <div class="panel-card" style="margin-top: 6px;">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span>&boxplus;</span>
+          <span>Task Accuracy Matrix — Grounding Progression Across Versions</span>
+        </div>
+        <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted);">
+          10 DEV Tasks (reflection trained) &bull; 6 Sealed Hold-out Tasks (gate verified)
+        </div>
+      </div>
+      <div style="padding: 10px 14px; overflow-x: auto;">
+        <table class="data-table" style="font-size: 11px;">
+          <thead>
+            <tr>
+              <th style="width: 80px;">Task ID</th>
+              <th style="width: 65px;">Type</th>
+              <th>Target Issue / Artifact</th>
+              <th style="width: 170px;">Expected Grounded Output</th>
+              <th style="text-align: center; width: 80px;">v0 Cold</th>
+              <th style="text-align: center; width: 75px;">v1</th>
+              <th style="text-align: center; width: 75px;">v2</th>
+              <th style="text-align: center; width: 95px;">v3 (Active)</th>
+              <th style="text-align: center; width: 95px;">v4 (Cand)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="mono badge badge-dev">dev-01</span></td>
+              <td><span class="mono">label</span></td>
+              <td>I1: API returns 500 on empty payload</td>
+              <td><span class="gh-label type-bug">type:bug</span><span class="gh-label area-api">area:api</span></td>
+              <td style="text-align: center;"><span class="badge badge-fail">&cross; FAIL</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+            </tr>
+            <tr>
+              <td><span class="mono badge badge-dev">dev-02</span></td>
+              <td><span class="mono">label</span></td>
+              <td>I2: Add invoice PDF export</td>
+              <td><span class="gh-label type-feat">type:feat</span><span class="gh-label area-billing">area:billing</span></td>
+              <td style="text-align: center;"><span class="badge badge-fail">&cross; FAIL</span></td>
+              <td style="text-align: center;"><span class="badge badge-fail">&cross; FAIL</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+            </tr>
+            <tr>
+              <td><span class="mono badge badge-dev">dev-03</span></td>
+              <td><span class="mono">label</span></td>
+              <td>I3: README typo in install section</td>
+              <td><span class="gh-label type-docs">type:docs</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+            </tr>
+            <tr>
+              <td><span class="mono badge badge-dev">dev-04</span></td>
+              <td><span class="mono">label</span></td>
+              <td>I5: Crash loop on nil context</td>
+              <td><span class="gh-label type-bug">type:bug</span><span class="gh-label area-runtime">area:runtime</span><span class="gh-label priority-p0">p0</span></td>
+              <td style="text-align: center;"><span class="badge badge-fail">&cross; FAIL</span></td>
+              <td style="text-align: center;"><span class="badge badge-fail">&cross; FAIL</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+            </tr>
+            <tr>
+              <td><span class="mono badge badge-dev">dev-05</span></td>
+              <td><span class="mono">duplicate</span></td>
+              <td>I9: API returns 500 when body is empty</td>
+              <td><span class="mono">duplicate_of: I1</span></td>
+              <td style="text-align: center;"><span class="badge badge-fail">&cross; FAIL</span></td>
+              <td style="text-align: center;"><span class="badge badge-fail">&cross; FAIL</span></td>
+              <td style="text-align: center;"><span class="badge badge-fail">&cross; FAIL</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+            </tr>
+            <tr>
+              <td><span class="mono badge badge-dev">dev-07</span></td>
+              <td><span class="mono">owner</span></td>
+              <td>PR path: src/billing/charge.py</td>
+              <td><span class="mono">owner: billing</span></td>
+              <td style="text-align: center;"><span class="badge badge-fail">&cross; FAIL</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+            </tr>
+            <tr>
+              <td><span class="mono badge badge-dev">dev-08</span></td>
+              <td><span class="mono">owner</span></td>
+              <td>PR path: src/runtime/worker.py</td>
+              <td><span class="mono">owner: runtime</span></td>
+              <td style="text-align: center;"><span class="badge badge-fail">&cross; FAIL</span></td>
+              <td style="text-align: center;"><span class="badge badge-fail">&cross; FAIL</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+            </tr>
+            <tr>
+              <td><span class="mono badge badge-dev">dev-10</span></td>
+              <td><span class="mono">fix_pr</span></td>
+              <td>Which PR fixed issue I1?</td>
+              <td><span class="mono">pr: P1</span></td>
+              <td style="text-align: center;"><span class="badge badge-fail">&cross; FAIL</span></td>
+              <td style="text-align: center;"><span class="badge badge-fail">&cross; FAIL</span></td>
+              <td style="text-align: center;"><span class="badge badge-fail">&cross; FAIL</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+            </tr>
+            <!-- Hold-out rows -->
+            <tr style="background: rgba(192, 132, 252, 0.04);">
+              <td><span class="mono badge badge-holdout">hold-01</span></td>
+              <td><span class="mono">label</span></td>
+              <td>I13: Add CSV export for invoices</td>
+              <td><span class="gh-label type-feat">type:feat</span><span class="gh-label area-billing">area:billing</span></td>
+              <td style="text-align: center; color: var(--text-dim);">[sealed]</td>
+              <td style="text-align: center; color: var(--text-dim);">[sealed]</td>
+              <td style="text-align: center; color: var(--text-dim);">[sealed]</td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+            </tr>
+            <tr style="background: rgba(192, 132, 252, 0.04);">
+              <td><span class="mono badge badge-holdout">hold-02</span></td>
+              <td><span class="mono">label</span></td>
+              <td>I14: Panic in worker when ctx canceled</td>
+              <td><span class="gh-label type-bug">type:bug</span><span class="gh-label area-runtime">area:runtime</span><span class="gh-label priority-p0">p0</span></td>
+              <td style="text-align: center; color: var(--text-dim);">[sealed]</td>
+              <td style="text-align: center; color: var(--text-dim);">[sealed]</td>
+              <td style="text-align: center; color: var(--text-dim);">[sealed]</td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+            </tr>
+            <tr style="background: rgba(192, 132, 252, 0.04);">
+              <td><span class="mono badge badge-holdout">hold-05</span></td>
+              <td><span class="mono">owner</span></td>
+              <td>PR path: src/ui/app.tsx</td>
+              <td><span class="mono">owner: ui</span></td>
+              <td style="text-align: center; color: var(--text-dim);">[sealed]</td>
+              <td style="text-align: center; color: var(--text-dim);">[sealed]</td>
+              <td style="text-align: center; color: var(--text-dim);">[sealed]</td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+              <td style="text-align: center;"><span class="badge badge-pass">&check; PASS</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function filterTable(split) {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      if (split === 'all') document.getElementById('btn-split-all').classList.add('active');
+      if (split === 'dev') document.getElementById('btn-split-dev').classList.add('active');
+      if (split === 'holdout') document.getElementById('btn-split-holdout').classList.add('active');
+
+      const rows = document.querySelectorAll('#runs-table tbody tr');
+      rows.forEach(r => {
+        if (split === 'all') r.style.display = '';
+        else if (split === 'dev') r.style.display = r.innerText.includes('DEV') ? '' : 'none';
+        else if (split === 'holdout') r.style.display = r.innerText.includes('HOLD-OUT') ? '' : 'none';
+      });
+    }
+
+    function searchTable() {
+      const q = document.getElementById('table-search').value.toLowerCase();
+      const rows = document.querySelectorAll('#runs-table tbody tr');
+      rows.forEach(r => {
+        r.style.display = r.innerText.toLowerCase().includes(q) ? '' : 'none';
+      });
+    }
+  </script>
+  <script>
+    window.addEventListener('keydown', (e) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+      if (e.key === '1') window.location.href = 'runs.html';
+      if (e.key === '2') window.location.href = 'challenge.html';
+      if (e.key === '3') window.location.href = 'trace.html';
+      if (e.key === '4') window.location.href = 'playbook.html';
+      if (e.key === '5') window.location.href = 'journal.html';
+      if (e.key === '6') window.location.href = 'promote.html';
+    });
+  </script>
+</body>
+</html>

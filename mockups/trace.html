@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Journeyman // Neatlogs Trace Cockpit</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand-section">
+      <a href="runs.html" class="brand-badge">
+        <div class="brand-symbol">J</div>
+        <div class="brand-title">
+          JOURNEYMAN
+          <span class="version-tag">APPRENTICE AGENT</span>
+        </div>
+      </a>
+      <div class="repo-pill">
+        <span class="dot"></span>
+        <span>arjun7n9s/journeyman-fixture</span>
+      </div>
+    </div>
+
+    <nav class="app-nav">
+      <a href="runs.html" class="nav-link"><span class="nav-shortcut">1</span> Runs Scoreboard</a><a href="challenge.html" class="nav-link"><span class="nav-shortcut">2</span> Challenge</a><a href="trace.html" class="nav-link active"><span class="nav-shortcut">3</span> Trace Cockpit</a><a href="playbook.html" class="nav-link"><span class="nav-shortcut">4</span> Playbook Viewer</a><a href="journal.html" class="nav-link"><span class="nav-shortcut">5</span> Journal</a><a href="promote.html" class="nav-link"><span class="nav-shortcut">6</span> Promote / Rollback</a>
+    </nav>
+
+    <div class="header-meta">
+      <div class="partner-chip">
+        <span style="color:#f472b6;">TMX</span>
+        <span>glm-4-7-flash</span>
+      </div>
+      <div class="partner-chip">
+        <span style="color:#38bdf8;">Neatlogs</span>
+        <span>Trace SoR</span>
+      </div>
+      <div class="status-badge-active" id="header-active-pointer">
+        <span style="width:6px;height:6px;background:#38bdf8;border-radius:50%;display:inline-block;"></span>
+        <span>ACTIVE: v3 (promoted)</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-container">
+    <!-- PARTNER INTEGRATION BANNER -->
+    <div class="controls-bar" style="background: linear-gradient(180deg, #131922 0%, #0d1117 100%); padding: 10px 14px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">NEATLOGS TRACE SoR:</span>
+        <select class="form-control" id="run-select" onchange="switchRun(this.value)" style="padding: 4px 8px; font-size: 11px; width: 340px;">
+          <option value="v3-hit" selected>run-20260906-12 (v3 DEV: 10/10 PASS — TensorMux Grounded)</option>
+          <option value="v0-cold">run-20260906-01 (v0 Baseline: 2/10 FAIL — Cold Explore)</option>
+          <option value="v4-cand">run-20260906-14 (v4 Cand: 10/10 PASS — Fast Grounding)</option>
+          <option value="v3-holdout">run-20260906-11 (v3 HOLD-OUT: 5/6 PASS — Sealed Gate)</option>
+        </select>
+        <span class="badge badge-dev" id="split-tag">DEV SPLIT</span>
+        <span class="badge badge-pass" id="outcome-tag">&check; EXACT MATCH (1.0)</span>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 14px; font-family: var(--font-mono); font-size: 11.5px;">
+        <div>Task: <strong style="color: #fff;">dev-04 (I5: Crash loop on nil)</strong></div>
+        <div>Latency: <strong style="color: var(--status-pass);" id="run-latency">890 ms</strong></div>
+        <div>Cost: <strong style="color: var(--accent-cyan);" id="run-cost">TMX 820 tok &bull; $0.0016</strong></div>
+      </div>
+    </div>
+
+    <!-- PARTNER ARCHITECTURE STATUS STRIP -->
+    <div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-panel); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 7px 12px; font-size: 11px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span class="partner-chip"><strong style="color: #f472b6;">Everyday Brain:</strong> TensorMux glm-4-7-flash</span>
+        <span class="partner-chip"><strong style="color: #38bdf8;">Trace SoR:</strong> Neatlogs spans (run_family: run-20260906-12)</span>
+        <span class="partner-chip"><strong style="color: #34d399;">Playbook RAG:</strong> OpenAI text-embedding-3-small</span>
+      </div>
+      <div style="font-family: var(--font-mono); color: var(--status-pass); font-size: 10.5px;">
+        &check; Quality Gate: PASS (OpenAI gpt-5-nano escalate standby - 0 misses)
+      </div>
+    </div>
+
+    <!-- PLAYBOOK HIT VS COLD EXPLORE COMPARISON CARDS -->
+    <div class="compare-container">
+      <div class="compare-card grounded" id="card-grounded">
+        <div class="compare-header">
+          <span>&check; GROUNDED EXECUTION PATH (TensorMux + Playbook RAG)</span>
+          <span class="mono">890 ms &bull; 1 MCP Call &bull; 820 Tokens ($0.0016)</span>
+        </div>
+        <p style="font-size: 11px; color: var(--text-secondary); line-height: 1.4;">
+          TensorMux actor retrieves Playbook v3 via OpenAI embeddings cache in 15ms. Executes single targeted <code class="mono">get_issue(number=5)</code> via GitHub MCP readonly. Zero exploratory crawling. Logged to Neatlogs.
+        </p>
+      </div>
+
+      <div class="compare-card cold" id="card-cold">
+        <div class="compare-header">
+          <span>&cross; COLD EXPLORE PATH (v0 Baseline - No Playbook)</span>
+          <span class="mono">4,850 ms &bull; 6 MCP Calls &bull; 14,250 Tokens ($0.028)</span>
+        </div>
+        <p style="font-size: 11px; color: var(--text-secondary); line-height: 1.4;">
+          Actor lacks repo grounding: repeatedly calls <code class="mono">list_issues</code>, <code class="mono">get_file</code>, and <code class="mono">search_code</code>, blowing token budget. Fails to infer <code class="mono">priority:p0</code> or <code class="mono">type:bug</code>. Accuracy: 0 (FAIL).
+        </p>
+      </div>
+    </div>
+
+    <!-- TRACE LAYOUT: WATERFALL TREE (LEFT) + SPAN DRAWER (RIGHT) -->
+    <div class="trace-layout">
+      <!-- LEFT: SPAN TREE & WATERFALL -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>&#9776;</span>
+            <span id="tree-title">Neatlogs Spans &bull; run-20260906-12 (TensorMux Grounded)</span>
+          </div>
+          <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted);">
+            Neatlogs SoR Span Timeline
+          </div>
+        </div>
+
+        <div class="panel-body" style="padding: 10px;">
+          <!-- GROUNDED RUN SPANS (V3) -->
+          <div id="spans-v3" class="trace-tree">
+            <!-- Root Span -->
+            <div class="span-row selected" onclick="selectSpan('v3-root')">
+              <div class="span-header">
+                <div class="span-title-area">
+                  <span class="span-kind neatlogs">NEATLOGS</span>
+                  <span class="span-name">TraceRoot: dev-04 [arjun7n9s/journeyman-fixture]</span>
+                </div>
+                <div class="span-metrics">
+                  <span>820 tokens</span>
+                  <span style="color: #fff; font-weight: 600;">890 ms</span>
+                </div>
+              </div>
+              <div class="span-waterfall-bar">
+                <div class="span-waterfall-fill" style="width: 100%; background: #0284c7;"></div>
+              </div>
+            </div>
+
+            <!-- Span 1: Playbook RAG Lookup -->
+            <div class="span-row indent-1" onclick="selectSpan('v3-rag')">
+              <div class="span-header">
+                <div class="span-title-area">
+                  <span class="span-kind oai">RAG_EMBED</span>
+                  <span class="span-name">Embeddings: OpenAI text-embedding-3-small (Playbook RAG)</span>
+                </div>
+                <div class="span-metrics">
+                  <span style="color: var(--status-pass);">Cache Hit</span>
+                  <span>15 ms</span>
+                </div>
+              </div>
+              <div class="span-waterfall-bar">
+                <div class="span-waterfall-fill" style="width: 3%; margin-left: 3%; background: #34d399;"></div>
+              </div>
+            </div>
+
+            <!-- Span 2: TensorMux Actor Step -->
+            <div class="span-row indent-1" onclick="selectSpan('v3-actor')">
+              <div class="span-header">
+                <div class="span-title-area">
+                  <span class="span-kind tmx">TENSORMUX</span>
+                  <span class="span-name">Actor: glm-4-7-flash &rarr; Plan MCP Tool Query</span>
+                </div>
+                <div class="span-metrics">
+                  <span style="color: var(--accent-cyan);">$0.0006</span>
+                  <span>260 tok</span>
+                  <span style="color: #fff; font-weight: 600;">280 ms</span>
+                </div>
+              </div>
+              <div class="span-waterfall-bar">
+                <div class="span-waterfall-fill" style="width: 30%; margin-left: 6%; background: #ec4899;"></div>
+              </div>
+            </div>
+
+            <!-- Span 3: GitHub MCP Call -->
+            <div class="span-row indent-2" onclick="selectSpan('v3-mcp')">
+              <div class="span-header">
+                <div class="span-title-area">
+                  <span class="span-kind mcp">MCP_TOOL</span>
+                  <span class="span-name">github_mcp.get_issue(repo, issue_number=5)</span>
+                </div>
+                <div class="span-metrics">
+                  <span style="color: var(--status-pass);">READONLY OK</span>
+                  <span>340 ms</span>
+                </div>
+              </div>
+              <div class="span-waterfall-bar">
+                <div class="span-waterfall-fill" style="width: 38%; margin-left: 36%; background: #10b981;"></div>
+              </div>
+            </div>
+
+            <!-- Span 4: Policy Allowlist Validation -->
+            <div class="span-row indent-2" onclick="selectSpan('v3-guard')">
+              <div class="span-header">
+                <div class="span-title-area">
+                  <span class="span-kind guard">POLICY</span>
+                  <span class="span-name">PolicyYAML.Validate("get_issue") &rarr; ALLOW</span>
+                </div>
+                <div class="span-metrics">
+                  <span style="color: var(--status-pass);">0 write</span>
+                  <span>4 ms</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Span 5: TensorMux Synthesis & Quality Gate -->
+            <div class="span-row indent-1" onclick="selectSpan('v3-synth')">
+              <div class="span-header">
+                <div class="span-title-area">
+                  <span class="span-kind tmx">TENSORMUX</span>
+                  <span class="span-name">Synthesis: glm-4-7-flash &rarr; Emit Labels &amp; Owner</span>
+                </div>
+                <div class="span-metrics">
+                  <span style="color: var(--status-pass);">&check; Quality Gate PASS</span>
+                  <span style="color: #fff; font-weight: 600;">251 ms</span>
+                </div>
+              </div>
+              <div class="span-waterfall-bar">
+                <div class="span-waterfall-fill" style="width: 26%; margin-left: 74%; background: #ec4899;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- COLD BASELINE SPANS (V0) -->
+          <div id="spans-v0" class="trace-tree" style="display: none;">
+            <div class="span-row selected" onclick="selectSpan('v0-root')">
+              <div class="span-header">
+                <div class="span-title-area">
+                  <span class="span-kind neatlogs">NEATLOGS</span>
+                  <span class="span-name">TraceRoot: dev-04 [v0 Cold Baseline]</span>
+                </div>
+                <div class="span-metrics">
+                  <span style="color: var(--status-fail);">14,250 tokens</span>
+                  <span style="color: var(--status-fail); font-weight: 600;">4,850 ms</span>
+                </div>
+              </div>
+              <div class="span-waterfall-bar">
+                <div class="span-waterfall-fill" style="width: 100%; background: #f43f5e;"></div>
+              </div>
+            </div>
+
+            <div class="span-row indent-1" onclick="selectSpan('v0-miss')">
+              <div class="span-header">
+                <div class="span-title-area">
+                  <span class="span-kind" style="background: rgba(244,63,94,0.2); color:#fda4af;">MEMORY_MISS</span>
+                  <span class="span-name">Playbook RAG &rarr; EMPTY (0 vectors)</span>
+                </div>
+                <div class="span-metrics">
+                  <span style="color: var(--status-fail);">0 rules</span>
+                  <span>5 ms</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="span-row indent-1" onclick="selectSpan('v0-crawl1')">
+              <div class="span-header">
+                <div class="span-title-area">
+                  <span class="span-kind mcp">MCP_TOOL</span>
+                  <span class="span-name">github_mcp.list_issues(repo, state="all")</span>
+                </div>
+                <div class="span-metrics"><span>3,200 tok</span><span>720 ms</span></div>
+              </div>
+            </div>
+
+            <div class="span-row indent-1" onclick="selectSpan('v0-crawl2')">
+              <div class="span-header">
+                <div class="span-title-area">
+                  <span class="span-kind mcp">MCP_TOOL</span>
+                  <span class="span-name">github_mcp.get_file(path="README.md")</span>
+                </div>
+                <div class="span-metrics"><span>1,800 tok</span><span>540 ms</span></div>
+              </div>
+            </div>
+
+            <div class="span-row indent-1" onclick="selectSpan('v0-crawl3')">
+              <div class="span-header">
+                <div class="span-title-area">
+                  <span class="span-kind mcp">MCP_TOOL</span>
+                  <span class="span-name">github_mcp.search_code(q="crash")</span>
+                </div>
+                <div class="span-metrics"><span>4,100 tok</span><span>980 ms</span></div>
+              </div>
+            </div>
+
+            <div class="span-row indent-1" onclick="selectSpan('v0-fail')">
+              <div class="span-header">
+                <div class="span-title-area">
+                  <span class="span-kind tmx">TENSORMUX</span>
+                  <span class="span-name">Synthesis: Missing Grounding &rarr; Hallucinated Area Only</span>
+                </div>
+                <div class="span-metrics"><span style="color: var(--status-fail);">&cross; FAIL (Missing p0, bug)</span><span>1,045 ms</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: SPAN INSPECTOR DRAWER -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>&#128065;</span>
+            <span id="drawer-title">Span Inspector &bull; Neatlogs Record</span>
+          </div>
+          <span class="badge badge-dev" id="drawer-kind-badge">NEATLOGS</span>
+        </div>
+
+        <div class="panel-body" style="gap: 12px; font-size: 12px;">
+          <!-- Metadata strip -->
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; background: var(--bg-surface); padding: 8px 10px; border-radius: 5px; border: 1px solid var(--border-subtle); font-family: var(--font-mono); font-size: 11px;">
+            <div>
+              <span style="color: var(--text-dim); display: block;">LATENCY</span>
+              <span style="color: #fff; font-weight: 600;" id="drawer-latency">890 ms</span>
+            </div>
+            <div>
+              <span style="color: var(--text-dim); display: block;">TOKENS / COST</span>
+              <span style="color: var(--accent-cyan); font-weight: 600;" id="drawer-tokens">820 tok &bull; $0.0016</span>
+            </div>
+            <div>
+              <span style="color: var(--text-dim); display: block;">NEATLOGS SPAN</span>
+              <span style="color: var(--status-pass); font-weight: 600;" id="drawer-status">nl_sp_8f3a1b</span>
+            </div>
+          </div>
+
+          <!-- Span input / parameters -->
+          <div>
+            <span style="font-size: 11px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 4px;">PARTNER ATTRIBUTION &amp; INPUT:</span>
+            <pre class="json-viewer" id="drawer-input">{
+  "neatlogs_span_id": "nl_sp_8f3a1b",
+  "task_id": "dev-04",
+  "partner_stack": {
+    "everyday_brain": "TensorMux glm-4-7-flash",
+    "embeddings": "OpenAI text-embedding-3-small",
+    "trace_sor": "Neatlogs",
+    "escalate_model": "OpenAI gpt-5-nano (standby)"
+  },
+  "issue_title": "Crash loop on nil context"
+}</pre>
+          </div>
+
+          <!-- Span Output -->
+          <div>
+            <span style="font-size: 11px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 4px;">RECORDED VERDICT &amp; SPAN EMISSION:</span>
+            <pre class="json-viewer" id="drawer-output">{
+  "quality_gate": "PASS",
+  "escalate_triggered": false,
+  "labels": ["area:runtime", "priority:p0", "type:bug"],
+  "logical_owner": "runtime",
+  "grounded_accuracy": 1.0,
+  "replay_family": "run-20260906-12"
+}</pre>
+          </div>
+
+          <!-- Policy & Invariant Guard -->
+          <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid var(--status-pass-border); border-radius: 5px; padding: 8px 10px;">
+            <div style="font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--status-pass); margin-bottom: 2px;">
+              &check; SYSTEM OF RECORD: NEATLOGS INGESTION CONFIRMED
+            </div>
+            <p style="font-size: 11px; color: var(--text-secondary); line-height: 1.35;" id="drawer-policy">
+              Spans immutable in Neatlogs. Read-only GitHub MCP protocol verified. Hold-out dataset sealed and untouched.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const spanData = {
+      'v3-root': {
+        title: 'Span Inspector &bull; Neatlogs Trace Root',
+        kind: 'NEATLOGS',
+        badge: 'badge-dev',
+        latency: '890 ms',
+        tokens: '820 tok ($0.0016)',
+        status: 'nl_sp_8f3a1b',
+        input: '{\n  "neatlogs_span_id": "nl_sp_8f3a1b",\n  "everyday_brain": "TensorMux glm-4-7-flash",\n  "trace_sor": "Neatlogs",\n  "task_id": "dev-04"\n}',
+        output: '{\n  "quality_gate": "PASS",\n  "labels": ["area:runtime", "priority:p0", "type:bug"],\n  "logical_owner": "runtime",\n  "score": 1.0\n}',
+        policy: 'Neatlogs span recorded. GitHub MCP readonly invariant enforced.'
+      },
+      'v3-rag': {
+        title: 'Span Inspector &bull; Playbook RAG Embeddings',
+        kind: 'OPENAI_EMBED',
+        badge: 'badge-pass',
+        latency: '15 ms',
+        tokens: 'OpenAI text-embedding-3-small',
+        status: 'RAG_HIT',
+        input: '{\n  "model": "text-embedding-3-small",\n  "query": "Crash loop on nil context in src/runtime/worker.py"\n}',
+        output: '{\n  "matched_playbook_vectors": ["#TAX-02 (crash/nil -> priority:p0)", "#MOD-03 (src/runtime -> runtime)"]\n}',
+        policy: 'Embeddings used for Playbook RAG retrieval only, per partner architecture.'
+      },
+      'v3-actor': {
+        title: 'Span Inspector &bull; TensorMux Actor Step',
+        kind: 'TENSORMUX',
+        badge: 'badge-dev',
+        latency: '280 ms',
+        tokens: '260 tok ($0.0006)',
+        status: 'TMX_OK',
+        input: '{\n  "model": "glm-4-7-flash",\n  "base_url": "https://api.tensormux.com/v1",\n  "action": "plan_tool_call"\n}',
+        output: '{\n  "tool": "github_mcp.get_issue",\n  "args": { "issue_number": 5 }\n}',
+        policy: 'TensorMux is daily driver for all actor steps.'
+      },
+      'v3-mcp': {
+        title: 'Span Inspector &bull; GitHub MCP Tool Hop',
+        kind: 'MCP_TOOL',
+        badge: 'badge-pass',
+        latency: '340 ms',
+        tokens: '420 tok',
+        status: '200 OK',
+        input: '{\n  "endpoint": "https://api.githubcopilot.com/mcp/readonly",\n  "issue_number": 5\n}',
+        output: '{\n  "title": "Crash loop on nil context",\n  "body": "runtime panic: nil pointer dereference"\n}',
+        policy: 'Read-only allowlist confirmed. Zero mutation attempts.'
+      },
+      'v3-guard': {
+        title: 'Span Inspector &bull; Policy YAML Check',
+        kind: 'POLICY',
+        badge: 'badge-dev',
+        latency: '4 ms',
+        tokens: '0 tok',
+        status: 'ALLOW',
+        input: '{\n  "tool": "get_issue",\n  "scope": "readonly"\n}',
+        output: '{\n  "decision": "ALLOW"\n}',
+        policy: 'Policy gates strictly in front of GitHub MCP.'
+      },
+      'v3-synth': {
+        title: 'Span Inspector &bull; TensorMux Synthesis & Quality Gate',
+        kind: 'TENSORMUX',
+        badge: 'badge-pass',
+        latency: '251 ms',
+        tokens: '140 tok ($0.0003)',
+        status: 'GATE_PASS',
+        input: '{\n  "model": "glm-4-7-flash",\n  "quality_gate_threshold": 0.85\n}',
+        output: '{\n  "quality_gate": "PASS (0.98)",\n  "escalate_to_nano": false,\n  "labels": ["area:runtime", "priority:p0", "type:bug"]\n}',
+        policy: 'Quality gate passed: No OpenAI gpt-5-nano escalation needed.'
+      },
+      'v0-root': {
+        title: 'Span Inspector &bull; Baseline Zero-Shot Run',
+        kind: 'COLD_FAIL',
+        badge: 'badge-fail',
+        latency: '4,850 ms',
+        tokens: '14,250 tok ($0.028)',
+        status: 'FAILED (0.0)',
+        input: '{\n  "task_id": "dev-04",\n  "playbook": "empty"\n}',
+        output: '{\n  "missing_labels": ["priority:p0", "type:bug"]\n}',
+        policy: 'Ungrounded crawl recorded to Neatlogs.'
+      }
+    };
+
+    function selectSpan(key) {
+      document.querySelectorAll('.span-row').forEach(r => r.classList.remove('selected'));
+      event.currentTarget.classList.add('selected');
+
+      const d = spanData[key] || spanData['v3-root'];
+      document.getElementById('drawer-title').innerHTML = d.title;
+      document.getElementById('drawer-kind-badge').innerText = d.kind;
+      document.getElementById('drawer-kind-badge').className = 'badge ' + d.badge;
+      document.getElementById('drawer-latency').innerText = d.latency;
+      document.getElementById('drawer-tokens').innerText = d.tokens;
+      document.getElementById('drawer-status').innerText = d.status;
+      document.getElementById('drawer-input').innerText = d.input.replace(/\\n/g, '\n');
+      document.getElementById('drawer-output').innerText = d.output.replace(/\\n/g, '\n');
+      document.getElementById('drawer-policy').innerText = d.policy;
+    }
+
+    function switchRun(mode) {
+      const isCold = mode === 'v0-cold';
+      document.getElementById('spans-v3').style.display = isCold ? 'none' : 'flex';
+      document.getElementById('spans-v0').style.display = isCold ? 'flex' : 'none';
+
+      if (isCold) {
+        document.getElementById('split-tag').innerText = 'DEV SPLIT';
+        document.getElementById('outcome-tag').innerText = 'FAIL (0.0)';
+        document.getElementById('outcome-tag').className = 'badge badge-fail';
+        document.getElementById('run-latency').innerText = '4,850 ms';
+        document.getElementById('run-latency').style.color = 'var(--status-fail)';
+        document.getElementById('run-cost').innerText = '6 MCP calls • 14,250 tok ($0.028)';
+        document.getElementById('tree-title').innerText = 'Neatlogs Spans • run-20260906-01 (v0 Cold Baseline)';
+        selectSpan('v0-root');
+      } else {
+        document.getElementById('split-tag').innerText = 'DEV SPLIT';
+        document.getElementById('outcome-tag').innerText = '✓ EXACT MATCH (1.0)';
+        document.getElementById('outcome-tag').className = 'badge badge-pass';
+        document.getElementById('run-latency').innerText = '890 ms';
+        document.getElementById('run-latency').style.color = 'var(--status-pass)';
+        document.getElementById('run-cost').innerText = 'TMX 820 tok • $0.0016';
+        document.getElementById('tree-title').innerText = 'Neatlogs Spans • run-20260906-12 (TensorMux Grounded)';
+        selectSpan('v3-root');
+      }
+    }
+  </script>
+
+  <script>
+    window.addEventListener('keydown', (e) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+      if (e.key === '1') window.location.href = 'runs.html';
+      if (e.key === '2') window.location.href = 'challenge.html';
+      if (e.key === '3') window.location.href = 'trace.html';
+      if (e.key === '4') window.location.href = 'playbook.html';
+      if (e.key === '5') window.location.href = 'journal.html';
+      if (e.key === '6') window.location.href = 'promote.html';
+    });
+  </script>
+</body>
+</html>
