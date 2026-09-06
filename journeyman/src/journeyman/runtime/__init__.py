@@ -63,7 +63,7 @@ class ContextGate:
 
 
 class SuperviseCycle:
-    """TraceIngest.poll → FailureJudge.diagnose → skip if not failure → CausalAnalyst.analyze → ProbeFactory.synthesize → resolve baseline → LiveScorer.run_baseline → PromptSurgeon.propose (candidate only) → LiveScorer.run_candidate → ExactReplay.replay → persist postmortem. RedTeam runs after promote on LIVE only."""
+    """TraceIngest.poll → FailureJudge.diagnose → skip if not failure → CausalAnalyst.analyze → ProbeFactory.synthesize → resolve baseline → LiveScorer (aux) → PromptSurgeon.propose (candidate only) → LiveScorer aux candidate → ExactReplay.replay → persist postmortem. Promote/RedTeam live outside this cycle: Actor re-eval on frozen JSON, then RedTeam on LIVE."""
 
     def __init__(
         self,
@@ -105,14 +105,14 @@ class SuperviseCycle:
         self.analyst.analyze(item)
         emit_node(sink, "Patch", title="root_caused", stage=item.stage, work_item_id=item.work_item_id)
         self.probes.synthesize(item)
-        emit_node(sink, "Eval DEV", title="synthesized", stage=item.stage, work_item_id=item.work_item_id)
+        emit_node(sink, "Patch", title="synthesized", stage=item.stage, work_item_id=item.work_item_id)
         item.baseline_prompt = _resolve_baseline(item)
-        self.scorer.run_baseline(item)
-        emit_node(sink, "Eval DEV", title="baseline", stage=item.stage, work_item_id=item.work_item_id)
+        self.scorer.run_baseline(item)  # aux diagnostic; not the promote signal
+        emit_node(sink, "Patch", title="aux_baseline", stage=item.stage, work_item_id=item.work_item_id)
         self.surgeon.propose(item)
         emit_node(sink, "Patch", title="candidate", stage=item.stage, work_item_id=item.work_item_id)
-        self.scorer.run_candidate(item)
-        emit_node(sink, "Eval DEV", title="candidate", stage=item.stage, work_item_id=item.work_item_id)
+        self.scorer.run_candidate(item)  # aux diagnostic; not the promote signal
+        emit_node(sink, "Patch", title="aux_candidate", stage=item.stage, work_item_id=item.work_item_id)
         self.replay.replay(item)
         emit_node(sink, "Patch", title="replayed", stage=item.stage, work_item_id=item.work_item_id)
         self.journal.persist_postmortem(item)

@@ -1,4 +1,8 @@
-"""Live scorer — heuristic until partner models are wired."""
+"""Live scorer — cycle aux diagnostics only.
+
+Promote / hold-out / RunN decisions use Actor re-eval on frozen JSON
+(`journeyman.demo.run.score_split`). Do not treat these heuristics as truth.
+"""
 
 from __future__ import annotations
 
