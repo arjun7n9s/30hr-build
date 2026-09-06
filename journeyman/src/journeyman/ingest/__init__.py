@@ -27,7 +27,7 @@ class NullTraceSink:
 
 
 class TraceIngest:
-    """skip session_id=="test", prompt_variant=="candidate", tool-child spans; seen ring max 500"""
+    """skip session_id=="test", prompt_variant=="candidate", split=held_out, tool-child spans; seen ring max 500"""
 
     def __init__(self, sink: TraceSink | None = None) -> None:
         self.seen: deque[str] = deque(maxlen=SEEN_RING_MAX)
@@ -72,6 +72,9 @@ class TraceIngest:
             return True
         variant = span.prompt_variant or _raw_attr(span.raw, "prompt_variant")
         if variant == "candidate":
+            return True
+        split = str(span.raw.get("split") or _raw_attr(span.raw, "split") or "").lower()
+        if split in {"holdout", "held_out", "held-out"}:
             return True
         if span.span_kind is SpanKind.TOOL:
             return True

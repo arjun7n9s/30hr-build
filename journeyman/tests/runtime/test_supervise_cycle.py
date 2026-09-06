@@ -51,6 +51,7 @@ def test_ingest_filters_and_seen_ring() -> None:
             _span(span_id="s-test", session_id="test"),
             _span(span_id="s-cand", prompt_variant="candidate"),
             _span(span_id="s-tool", span_kind=SpanKind.TOOL, input_text="x", output_text="y"),
+            _span(span_id="s-hold", raw={"split": "holdout"}),
             _span(span_id="s-ok"),
             _span(span_id="s-ok"),
         ]

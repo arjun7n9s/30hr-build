@@ -12,6 +12,7 @@ from journeyman.contracts import (
     Playbook,
     SkillQuery,
     SpanKind,
+    Split,
     Stage,
     TraceEventRow,
     TraceSpan,
@@ -74,6 +75,7 @@ class Actor:
         playbook: Playbook,
         session_id: str = "demo",
         prompt_variant: str = "baseline",
+        split: Split = Split.DEV,
     ) -> ActorTurn:
         trace_id = uuid.uuid4().hex[:16]
         hits = _playbook_hits(playbook, prompt)
@@ -94,6 +96,7 @@ class Actor:
                     trace_id=trace_id,
                     session_id=session_id,
                     hits=hits,
+                    split=split,
                 )
                 spans.append(tool_span)
                 events.append(event)
@@ -115,6 +118,7 @@ class Actor:
             prompt_variant=prompt_variant,
             hits=hits,
             tool_calls=tool_calls,
+            split=split,
         )
         spans.append(span)
         events.append(event)
@@ -138,6 +142,7 @@ class Actor:
                 prompt_variant=prompt_variant,
                 hits=hits,
                 tool_calls=tool_calls,
+                split=split,
             )
             spans.append(span)
             events.append(event)
@@ -162,6 +167,7 @@ class Actor:
             trace_id="adhoc",
             session_id="demo",
             hits=[],
+            split=Split.DEV,
         )
         return result
 
@@ -173,6 +179,7 @@ class Actor:
         trace_id: str,
         session_id: str,
         hits: list[str],
+        split: Split = Split.DEV,
     ) -> tuple[dict[str, Any], TraceSpan, TraceEventRow]:
         sendoff = self.gate.enter("tool", {"tool": name, "args": args}, include=["tool", "args"])
         allowed = self.gateway.allow(name, args)
@@ -203,6 +210,7 @@ class Actor:
                 "cost": 0.0,
                 "playbook_hits": hits,
                 "denied": bool(result.get("denied")),
+                "split": split.value,
             },
         )
         event = TraceEventRow(
@@ -226,6 +234,7 @@ class Actor:
         prompt_variant: str,
         hits: list[str],
         tool_calls: list[dict[str, Any]],
+        split: Split = Split.DEV,
     ) -> tuple[TraceSpan, TraceEventRow]:
         span = TraceSpan(
             span_id=uuid.uuid4().hex[:12],
@@ -245,6 +254,7 @@ class Actor:
                 "tokens": turn.tokens,
                 "cost": turn.cost,
                 "playbook_hits": hits,
+                "split": split.value,
             },
         )
         event = TraceEventRow(
@@ -258,6 +268,7 @@ class Actor:
                 "tokens": turn.tokens,
                 "cost": turn.cost,
                 "playbook_hits": hits,
+                "split": split.value,
             },
         )
         self.sink.emit(event)
