@@ -12,3 +12,6 @@ dist/
 build/
 .venv/
 venv/
+/runs/
+/ui/
+web/public/last-report.json
